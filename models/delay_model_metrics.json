@@ -1,0 +1,60 @@
+{
+  "best_model": "XGBoost",
+  "feature_count": 10,
+  "numerical_features": [
+    "sanctioned_amount",
+    "rec_to_sanction_days",
+    "planned_duration_days",
+    "cost_vs_peer_median_ratio",
+    "peer_cost_zscore",
+    "agency_avg_delay",
+    "agency_completion_rate",
+    "district_completion_rate"
+  ],
+  "categorical_features": [
+    "sector",
+    "state"
+  ],
+  "model_comparison": {
+    "LogisticRegression": {
+      "Accuracy": 66.0,
+      "Precision": 70.08,
+      "Recall": 85.14,
+      "F1-Score": 76.88,
+      "ROC-AUC": 0.685,
+      "PR-AUC": 0.825
+    },
+    "RandomForest": {
+      "Accuracy": 67.13,
+      "Precision": 68.67,
+      "Recall": 92.87,
+      "F1-Score": 78.96,
+      "ROC-AUC": 0.714,
+      "PR-AUC": 0.849
+    },
+    "GradientBoosting": {
+      "Accuracy": 68.87,
+      "Precision": 73.1,
+      "Recall": 84.04,
+      "F1-Score": 78.19,
+      "ROC-AUC": 0.738,
+      "PR-AUC": 0.861
+    },
+    "HistGradientBoosting": {
+      "Accuracy": 68.8,
+      "Precision": 73.08,
+      "Recall": 83.94,
+      "F1-Score": 78.13,
+      "ROC-AUC": 0.743,
+      "PR-AUC": 0.866
+    },
+    "XGBoost": {
+      "Accuracy": 70.13,
+      "Precision": 73.99,
+      "Recall": 84.84,
+      "F1-Score": 79.05,
+      "ROC-AUC": 0.746,
+      "PR-AUC": 0.867
+    }
+  }
+}

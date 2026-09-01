@@ -1,0 +1,202 @@
+"""
+Feature Engineering Pipeline for MPLADS Works (Leakage-Free).
+Strictly separates pre-completion predictive features from target definitions and post-kickoff diagnostics.
+"""
+
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, Any, List, Tuple
+import pandas as pd
+import numpy as np
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+CURRENT_ANALYSIS_DATE = pd.to_datetime("2026-08-01")
+
+
+def compute_pre_kickoff_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Computes features strictly available at administrative sanction / project kickoff time.
+    """
+    df = df.copy()
+    
+    # 1. Ensure required columns exist with safe defaults
+    for col in ["recommendation_date", "sanction_date", "expected_completion_date"]:
+        if col not in df.columns:
+            df[col] = None
+    for col in ["sanctioned_amount", "estimated_cost", "recommended_amount"]:
+        if col not in df.columns:
+            df[col] = 0.0
+    if "sector" not in df.columns:
+        df["sector"] = "Other Community Works"
+    if "state" not in df.columns:
+        df["state"] = "General"
+    if "district" not in df.columns:
+        df["district"] = "General"
+    if "implementing_agency" not in df.columns:
+        df["implementing_agency"] = "District Agency"
+            
+    df["recommendation_date"] = pd.to_datetime(df["recommendation_date"], errors="coerce")
+    df["sanction_date"] = pd.to_datetime(df["sanction_date"], errors="coerce")
+    df["expected_completion_date"] = pd.to_datetime(df["expected_completion_date"], errors="coerce")
+    
+    # 2. Administrative Latency: Recommendation to Sanction (Days)
+    df["rec_to_sanction_days"] = (df["sanction_date"] - df["recommendation_date"]).dt.days.fillna(30.0).clip(lower=0.0)
+    
+    # 3. Contract Planned Duration (Days)
+    df["planned_duration_days"] = (df["expected_completion_date"] - df["sanction_date"]).dt.days.fillna(365.0).clip(lower=30.0)
+    
+    # 4. Financial Baseline Ratios (Known at Sanction)
+    df["estimated_vs_sanctioned_ratio"] = np.where(
+        df["sanctioned_amount"] > 0,
+        df["estimated_cost"] / df["sanctioned_amount"],
+        1.0
+    )
+    df["recommended_vs_sanctioned_ratio"] = np.where(
+        df["sanctioned_amount"] > 0,
+        df["recommended_amount"] / df["sanctioned_amount"],
+        1.0
+    )
+    
+    # 5. Peer Group Statistics (Progressive Fallback: District+Sector -> State+Sector -> National Sector)
+    # Computed on historical basis
+    sector_medians = df.groupby("sector")["sanctioned_amount"].median().to_dict()
+    df["sector_median_cost"] = df["sector"].map(sector_medians)
+    
+    state_sector_grp = df.groupby(["state", "sector"])["sanctioned_amount"].agg(["median", "count"])
+    def get_peer_median(row):
+        key = (row["state"], row["sector"])
+        if key in state_sector_grp.index and state_sector_grp.loc[key, "count"] >= 5:
+            return state_sector_grp.loc[key, "median"]
+        return row["sector_median_cost"]
+    df["peer_median_cost"] = df.apply(get_peer_median, axis=1)
+    
+    df["cost_vs_peer_median_ratio"] = np.where(
+        df["peer_median_cost"] > 0,
+        df["sanctioned_amount"] / df["peer_median_cost"],
+        1.0
+    )
+    
+    # 6. Sector Cost Z-Score
+    sector_stats = df.groupby("sector")["sanctioned_amount"].agg(["mean", "std"])
+    def get_zscore(row):
+        sec = row["sector"]
+        if sec in sector_stats.index:
+            mean = sector_stats.loc[sec, "mean"]
+            std = sector_stats.loc[sec, "std"]
+            if std > 0:
+                return (row["sanctioned_amount"] - mean) / std
+        return 0.0
+    df["peer_cost_zscore"] = df.apply(get_zscore, axis=1)
+    
+    # 7. Agency Past Experience Count
+    agency_counts = df.groupby("implementing_agency")["work_id"].count().to_dict()
+    df["agency_work_volume"] = df["implementing_agency"].map(agency_counts).fillna(1)
+    
+    return df
+
+
+def compute_post_kickoff_metrics_and_targets(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Computes post-kickoff diagnostics, financial variance, and ground-truth target labels.
+    NOTE: Features derived here MUST NOT be used in the predictive delay model to prevent leakage.
+    """
+    df = df.copy()
+    
+    # Ensure optional columns exist with safe defaults
+    for col in ["recommendation_date", "sanction_date", "expected_completion_date", "actual_completion_date", "latest_payment_date"]:
+        if col not in df.columns:
+            df[col] = None
+            
+    for col in ["sanctioned_amount", "estimated_cost", "recommended_amount", "fund_released", "total_expenditure"]:
+        if col not in df.columns:
+            df[col] = 0.0
+            
+    if "payment_count" not in df.columns:
+        df["payment_count"] = 1
+        
+    df["actual_completion_date"] = pd.to_datetime(df["actual_completion_date"], errors="coerce")
+    df["latest_payment_date"] = pd.to_datetime(df["latest_payment_date"], errors="coerce")
+    
+    # Work Age
+    df["work_age_days"] = (CURRENT_ANALYSIS_DATE - df["sanction_date"]).dt.days.fillna(180.0).clip(lower=0.0)
+    
+    # Realized Delay Days (Ground truth)
+    comp_delay = (df["actual_completion_date"] - df["expected_completion_date"]).dt.days
+    active_delay = (CURRENT_ANALYSIS_DATE - df["expected_completion_date"]).dt.days
+    
+    df["delay_days"] = np.where(
+        df["status"] == "COMPLETED",
+        comp_delay.fillna(0.0),
+        np.maximum(0.0, active_delay.fillna(0.0))
+    )
+    df["delay_days"] = df["delay_days"].clip(lower=0.0)
+    
+    # Financial Disbursal & Expenditure Ratios (For Anomaly Detection & Monitoring)
+    df["cost_deviation"] = np.where(
+        df["sanctioned_amount"] > 0,
+        (df["total_expenditure"] - df["sanctioned_amount"]) / df["sanctioned_amount"],
+        0.0
+    )
+    df["fund_release_ratio"] = np.where(
+        df["sanctioned_amount"] > 0,
+        df["fund_released"] / df["sanctioned_amount"],
+        0.0
+    )
+    df["utilization_rate"] = np.where(
+        df["fund_released"] > 0,
+        df["total_expenditure"] / df["fund_released"],
+        0.0
+    )
+    df["remaining_fund"] = np.maximum(0.0, df["fund_released"] - df["total_expenditure"])
+    
+    work_age_safe = np.maximum(1.0, df["work_age_days"])
+    df["expenditure_velocity"] = df["total_expenditure"] / work_age_safe
+    df["is_single_payment_spurt"] = ((df["payment_count"] == 1) & (df["utilization_rate"] >= 0.85)).astype(int)
+    
+    # Target Ground-Truth Definition:
+    # Target = 1 if work took > 45 days past deadline or is stalled
+    df["target_is_delayed"] = np.where(
+        (df["delay_days"] > 45.0) | (df["status"].isin(["DELAYED", "STALLED"])),
+        1, 0
+    )
+    
+    # Deterministic Overdue Status (Business rule, not ML model)
+    df["is_currently_overdue"] = (
+        (df["expected_completion_date"] < CURRENT_ANALYSIS_DATE) &
+        (df["status"] != "COMPLETED")
+    ).astype(int)
+    
+    # Deterministic Stall Status
+    df["is_currently_stalled"] = (
+        (df["status"] == "STALLED") |
+        ((df["completion_percentage"] < 15.0) & (df["work_age_days"] > 250.0) & (df["status"] != "COMPLETED"))
+    ).astype(int)
+    
+    return df
+
+
+def build_all_features(master_path: Path, output_features_path: Path) -> pd.DataFrame:
+    logger.info(f"Loading master dataset from {master_path}...")
+    df = pd.read_parquet(master_path)
+    
+    logger.info("Computing leakage-free pre-kickoff predictive features...")
+    df = compute_pre_kickoff_features(df)
+    
+    logger.info("Computing diagnostic monitoring metrics & ground truth targets...")
+    df = compute_post_kickoff_metrics_and_targets(df)
+    
+    output_features_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(output_features_path.with_suffix(".parquet"), index=False)
+    df.to_csv(output_features_path.with_suffix(".csv"), index=False)
+    
+    logger.info(f"Feature dataset saved to {output_features_path.with_suffix('.parquet')} ({len(df)} rows, {len(df.columns)} columns)")
+    return df
+
+
+if __name__ == "__main__":
+    master_file = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\master_works.parquet")
+    features_out = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\features_master.parquet")
+    build_all_features(master_file, features_out)

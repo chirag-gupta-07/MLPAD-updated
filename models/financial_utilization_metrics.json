@@ -1,0 +1,34 @@
+{
+  "financial": {
+    "model_type": "IsolationForest_Progressive_Peer_Group",
+    "min_peer_group_size": 5,
+    "n_samples": 1500,
+    "features": [
+      "sanctioned_amount",
+      "total_expenditure",
+      "cost_deviation",
+      "cost_vs_peer_median_ratio",
+      "peer_cost_zscore",
+      "expenditure_velocity"
+    ],
+    "peer_group_distribution": {
+      "State+Sector": 787,
+      "District+Sector": 710,
+      "National+Sector": 3
+    },
+    "mean_anomaly_score": 19.56812693534749,
+    "high_risk_count": 120
+  },
+  "utilization": {
+    "model_type": "IsolationForest_Utilization",
+    "n_samples": 1500,
+    "features": [
+      "fund_release_ratio",
+      "utilization_rate",
+      "payment_count",
+      "is_single_payment_spurt"
+    ],
+    "mean_anomaly_score": 19.644609388367677,
+    "high_risk_count": 40
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "audit_status": "LEAKAGE_FREE_VALIDATED",
+  "evaluation_strategy": "Temporal_Train_Test_Split (75% Train, 25% Test)",
+  "cutoff_date": "2024-07-31",
+  "total_dataset_size": 1500,
+  "train_set_size": 1126,
+  "test_set_size": 374,
+  "delayed_count": 991,
+  "on_time_count": 509,
+  "predictive_features": [
+    "sanctioned_amount",
+    "estimated_cost",
+    "recommended_amount",
+    "rec_to_sanction_days",
+    "planned_duration_days",
+    "cost_vs_peer_median_ratio",
+    "peer_cost_zscore",
+    "agency_work_volume",
+    "sector",
+    "state"
+  ],
+  "removed_leaked_features": [
+    "schedule_overrun_ratio",
+    "delay_days",
+    "actual_completion_date",
+    "actual_duration_days",
+    "completion_percentage",
+    "progress_rate_per_100d",
+    "days_since_last_payment"
+  ],
+  "best_model": "RandomForest",
+  "model_comparison": {
+    "Baseline_LogisticRegression": {
+      "Accuracy": 55.35,
+      "Precision": 57.84,
+      "Recall": 78.3,
+      "F1-Score": 66.53,
+      "ROC-AUC": 0.5323,
+      "PR-AUC": 0.6407,
+      "Confusion_Matrix": [
+        [
+          41,
+          121
+        ],
+        [
+          46,
+          166
+        ]
+      ]
+    },
+    "RandomForest": {
+      "Accuracy": 55.61,
+      "Precision": 56.5,
+      "Recall": 94.34,
+      "F1-Score": 70.67,
+      "ROC-AUC": 0.5717,
+      "PR-AUC": 0.6741,
+      "Confusion_Matrix": [
+        [
+          8,
+          154
+        ],
+        [
+          12,
+          200
+        ]
+      ]
+    },
+    "GradientBoosting": {
+      "Accuracy": 56.15,
+      "Precision": 59.09,
+      "Recall": 73.58,
+      "F1-Score": 65.55,
+      "ROC-AUC": 0.5678,
+      "PR-AUC": 0.6658,
+      "Confusion_Matrix": [
+        [
+          54,
+          108
+        ],
+        [
+          56,
+          156
+        ]
+      ]
+    }
+  }
+}

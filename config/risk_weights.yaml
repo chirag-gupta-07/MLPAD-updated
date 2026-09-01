@@ -1,0 +1,13 @@
+# Multi-Signal Risk Engine Configuration
+weights:
+  financial: 0.30
+  delay: 0.25
+  duplicate: 0.20
+  utilization: 0.15
+  stall: 0.10
+
+thresholds:
+  high_risk_min: 70.0
+  medium_risk_min: 40.0
+
+minimum_peer_group_size: 5

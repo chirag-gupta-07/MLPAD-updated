@@ -1,0 +1,5 @@
+duplicate_type,record_count,affected_work_ids,action_taken
+Exact Full-Row Duplication,0,None,Deduplicated during preprocessing pipeline using df.drop_duplicates()
+Work ID Collisions,0,None,Enforced unique primary key constraint and generated SHA256 surrogate keys for collisions
+Semantic & Geographic Injected Duplicate Pairs,60,"MPLADS-18LS-WB-02337, MPLADS-18LS-AP-02297, MPLADS-18LS-TN-02330, MPLADS-18LS-K-02325, MPLADS-18LS-UP-02294",Grouped and isolated during train/test temporal split to prevent leakage across folds
+Identical Financial & Geographic Cluster Entries,0,None,Tagged for semantic duplicate index evaluation and grouped by district in time-series split
