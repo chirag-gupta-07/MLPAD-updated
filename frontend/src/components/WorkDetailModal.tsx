@@ -1,5 +1,7 @@
-import React from 'react';
-import { X, ShieldAlert, AlertTriangle, CheckCircle, FileText, MapPin, DollarSign, Clock, Layers, Copy, CheckSquare, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { X, ShieldAlert, AlertTriangle, CheckCircle, FileText, MapPin, DollarSign, Clock, Layers, Copy, CheckSquare, ShieldCheck, Camera, PlusCircle, Check } from 'lucide-react';
+import { CitizenEvidenceModal } from './CitizenEvidenceModal';
 
 interface WorkDetailModalProps {
   work: any;
@@ -8,6 +10,27 @@ interface WorkDetailModalProps {
 
 export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work, onClose }) => {
   if (!work) return null;
+
+  const [citizenEvidence, setCitizenEvidence] = useState<any[]>([]);
+  const [loadingEvidence, setLoadingEvidence] = useState(false);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+
+  const fetchCitizenEvidence = async () => {
+    if (!work?.work_id) return;
+    setLoadingEvidence(true);
+    try {
+      const res = await axios.get(`/api/citizen-evidence/work/${work.work_id}`);
+      setCitizenEvidence(res.data.evidence || []);
+    } catch (e) {
+      console.error('Failed to load citizen evidence for work:', e);
+    } finally {
+      setLoadingEvidence(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCitizenEvidence();
+  }, [work?.work_id]);
 
   let riskFactors: any[] = [];
   let recommendedActions: string[] = [];
@@ -219,6 +242,93 @@ export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work, onClose 
             </div>
           )}
 
+          {/* Citizen Evidence & Ground Reality Signals (Feature 7.6) */}
+          <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-indigo-950 text-xs uppercase tracking-wider flex items-center">
+                <Camera className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                Crowdsourced Citizen Evidence & Field Signals ({citizenEvidence.length})
+              </h4>
+              <button
+                type="button"
+                onClick={() => setShowSubmitModal(true)}
+                className="flex items-center space-x-1 text-[11px] font-semibold bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-lg transition shadow-sm"
+              >
+                <PlusCircle className="w-3 h-3" />
+                <span>Submit Ground Evidence</span>
+              </button>
+            </div>
+
+            {loadingEvidence ? (
+              <p className="text-[11px] text-slate-400">Loading ground reports...</p>
+            ) : citizenEvidence.length === 0 ? (
+              <div className="bg-white/80 p-3 rounded-lg border border-dashed border-indigo-200 text-center text-[11px] text-slate-500">
+                <span>No citizen reports filed for this work yet. Citizens and local community members can submit geo-tagged photos and progress updates to flag field discrepancies.</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {citizenEvidence.map((ev, idx) => (
+                  <div key={idx} className="p-3 bg-white rounded-lg border border-indigo-100 shadow-sm space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-bold text-slate-900 text-xs">{ev.issue_type.replace(/_/g, ' ')}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                          ev.verification_status === 'SUPERVISORY_VERIFIED' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                          ev.verification_status === 'FIELD_INSPECTION_SCHEDULED' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                          'bg-amber-100 text-amber-800 border-amber-300'
+                        }`}>
+                          {ev.verification_status === 'SUPERVISORY_VERIFIED' ? 'Verified Discrepancy' :
+                           ev.verification_status === 'FIELD_INSPECTION_SCHEDULED' ? 'Inspection Scheduled' : 'Pending Verification'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400">
+                        {ev.distance_from_site_km !== undefined && `${ev.distance_from_site_km} km from site`}
+                      </span>
+                    </div>
+
+                    {(ev.photo_url || ev.photo_filename) && (
+                      <div className="relative rounded-lg overflow-hidden max-h-48 bg-slate-100 border border-slate-200 my-1.5">
+                        <img
+                          src={ev.photo_url || `/api/citizen-evidence/photo/${ev.photo_filename}`}
+                          alt="Ground Evidence"
+                          className="w-full h-44 object-cover"
+                          onError={(e) => {
+                            if (ev.photo_filename && !e.currentTarget.src.includes('/api/citizen-evidence/photo/')) {
+                              e.currentTarget.src = `/api/citizen-evidence/photo/${ev.photo_filename}`;
+                            } else {
+                              e.currentTarget.style.display = 'none';
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    <p className="text-slate-700 text-xs">{ev.description}</p>
+
+                    {ev.progress_gap > 0 && (
+                      <div className="text-[11px] text-indigo-900 bg-indigo-50/80 px-2 py-1 rounded font-medium flex items-center justify-between">
+                        <span>Portal Progress: <strong>{ev.official_progress}%</strong></span>
+                        <span>Observed on Ground: <strong className="text-red-700">{ev.claimed_progress}%</strong></span>
+                        <span className="text-[10px] text-red-600 font-bold font-mono">Gap: -{ev.progress_gap}%</span>
+                      </div>
+                    )}
+
+                    {ev.admin_notes && (
+                      <div className="p-2 bg-blue-50/80 rounded text-[11px] text-blue-900 border border-blue-200">
+                        <strong>Supervisory Note:</strong> {ev.admin_notes}
+                      </div>
+                    )}
+
+                    <div className="text-[10px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100">
+                      <span>Submitted by: {ev.citizen_name || 'Anonymous'}</span>
+                      <span>{ev.submission_timestamp?.slice(0, 10)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Actionable Recommendations */}
           <div>
             <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider mb-2 flex items-center">
@@ -249,6 +359,16 @@ export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work, onClose 
             Close Audit Inspector
           </button>
         </div>
+
+        {/* Embedded Citizen Evidence Submission Modal */}
+        <CitizenEvidenceModal
+          isOpen={showSubmitModal}
+          onClose={() => setShowSubmitModal(false)}
+          prefilledWork={work}
+          onSuccess={() => {
+            fetchCitizenEvidence();
+          }}
+        />
 
       </div>
     </div>

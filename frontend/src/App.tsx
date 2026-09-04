@@ -6,10 +6,11 @@ import { RiskCharts } from './components/RiskCharts';
 import { WorksTable } from './components/WorksTable';
 import { GisMap } from './components/GisMap';
 import { AiAssistant } from './components/AiAssistant';
+import { CitizenEvidenceTab } from './components/CitizenEvidenceTab';
 import { UploadModal } from './components/UploadModal';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'works' | 'gis' | 'assistant'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'works' | 'gis' | 'assistant' | 'evidence'>('overview');
   const [summary, setSummary] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -70,7 +71,14 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 4: AI Insights Assistant */}
+        {/* Tab 4: Citizen Evidence & Ground Reality Signals (Feature 7.6) */}
+        {activeTab === 'evidence' && (
+          <div className="animate-in fade-in duration-150">
+            <CitizenEvidenceTab />
+          </div>
+        )}
+
+        {/* Tab 5: AI Insights Assistant */}
         {activeTab === 'assistant' && (
           <div className="animate-in fade-in duration-150">
             <AiAssistant />

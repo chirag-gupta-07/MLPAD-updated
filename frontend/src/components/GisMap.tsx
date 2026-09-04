@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
 import axios from 'axios';
-import { MapPin, ShieldAlert, Layers, Filter } from 'lucide-react';
+import { MapPin, ShieldAlert, Layers, Filter, Camera } from 'lucide-react';
+import { CitizenEvidenceModal } from './CitizenEvidenceModal';
 
 interface MarkerData {
   work_id: string;
@@ -31,6 +32,7 @@ export const GisMap: React.FC = () => {
   const [filterRisk, setFilterRisk] = useState<string>('ALL');
   const [center, setCenter] = useState<[number, number]>([22.5, 79.5]);
   const [zoom, setZoom] = useState<number>(5);
+  const [evidenceWorkModal, setEvidenceWorkModal] = useState<any | null>(null);
 
   useEffect(() => {
     const fetchMarkers = async () => {
@@ -188,6 +190,14 @@ export const GisMap: React.FC = () => {
                       <span>Budget: ₹{(m.sanctioned_amount / 1e5).toFixed(1)}L</span>
                       <span>Spent: ₹{(m.total_expenditure / 1e5).toFixed(1)}L</span>
                     </div>
+
+                    <button
+                      onClick={() => setEvidenceWorkModal(m)}
+                      className="w-full mt-2 py-1 px-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded text-[10px] font-semibold border border-indigo-200 flex items-center justify-center space-x-1 transition"
+                    >
+                      <Camera className="w-3 h-3 text-indigo-600" />
+                      <span>Submit Ground Evidence</span>
+                    </button>
                   </div>
                 </Popup>
               </CircleMarker>
@@ -213,6 +223,20 @@ export const GisMap: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Citizen Evidence Modal */}
+      {evidenceWorkModal && (
+        <CitizenEvidenceModal
+          isOpen={Boolean(evidenceWorkModal)}
+          onClose={() => setEvidenceWorkModal(null)}
+          prefilledWork={{
+            work_id: evidenceWorkModal.work_id,
+            work_description: evidenceWorkModal.description,
+            latitude: evidenceWorkModal.latitude,
+            longitude: evidenceWorkModal.longitude
+          }}
+        />
+      )}
 
     </div>
   );

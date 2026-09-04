@@ -65,3 +65,14 @@ dist/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Citizen Evidence Local Data & Uploads
+data/citizen_evidence/*.db
+data/citizen_evidence/uploads/*
+!data/citizen_evidence/uploads/demo_evidence_*.jpg
+
+# Large Local Raw Datasets
+MPLADs datsets/
+MPLADs datasets/
+data/raw/
+

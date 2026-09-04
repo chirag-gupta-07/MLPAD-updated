@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, Filter, AlertCircle, ChevronLeft, ChevronRight, Eye, ShieldAlert, ArrowUpDown } from 'lucide-react';
+import { Search, Filter, AlertCircle, ChevronLeft, ChevronRight, Eye, ShieldAlert, ArrowUpDown, Camera } from 'lucide-react';
 import { WorkDetailModal } from './WorkDetailModal';
+import { CitizenEvidenceModal } from './CitizenEvidenceModal';
 
 export const WorksTable: React.FC = () => {
   const [works, setWorks] = useState<any[]>([]);
@@ -19,6 +20,7 @@ export const WorksTable: React.FC = () => {
 
   // Selected work for modal
   const [selectedWork, setSelectedWork] = useState<any | null>(null);
+  const [evidenceWork, setEvidenceWork] = useState<any | null>(null);
 
   const fetchWorks = async () => {
     setLoading(true);
@@ -211,13 +213,22 @@ export const WorksTable: React.FC = () => {
                   </td>
 
                   <td className="px-4 py-3 text-center whitespace-nowrap">
-                    <button
-                      onClick={() => setSelectedWork(w)}
-                      className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition"
-                      title="Inspect Explainable AI Audit Profile"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center justify-center space-x-1">
+                      <button
+                        onClick={() => setEvidenceWork(w)}
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition"
+                        title="Submit Citizen Ground Evidence"
+                      >
+                        <Camera className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setSelectedWork(w)}
+                        className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition"
+                        title="Inspect Explainable AI Audit Profile"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -256,6 +267,15 @@ export const WorksTable: React.FC = () => {
         <WorkDetailModal
           work={selectedWork}
           onClose={() => setSelectedWork(null)}
+        />
+      )}
+
+      {/* Direct Citizen Evidence Modal */}
+      {evidenceWork && (
+        <CitizenEvidenceModal
+          isOpen={Boolean(evidenceWork)}
+          onClose={() => setEvidenceWork(null)}
+          prefilledWork={evidenceWork}
         />
       )}
 

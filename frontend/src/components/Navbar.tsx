@@ -1,9 +1,9 @@
 import React from 'react';
-import { ShieldAlert, BarChart3, Map, Bot, Upload, RefreshCw } from 'lucide-react';
+import { ShieldAlert, BarChart3, Map, Bot, Upload, RefreshCw, Camera } from 'lucide-react';
 
 interface NavbarProps {
-  activeTab: 'overview' | 'works' | 'gis' | 'assistant';
-  setActiveTab: (tab: 'overview' | 'works' | 'gis' | 'assistant') => void;
+  activeTab: 'overview' | 'works' | 'gis' | 'assistant' | 'evidence';
+  setActiveTab: (tab: 'overview' | 'works' | 'gis' | 'assistant' | 'evidence') => void;
   openUploadModal: () => void;
 }
 
@@ -65,6 +65,18 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUpl
             >
               <Map className="w-4 h-4" />
               <span>GIS Map</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('evidence')}
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                activeTab === 'evidence'
+                  ? 'bg-indigo-600 text-white shadow'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <Camera className="w-4 h-4" />
+              <span>Citizen Evidence</span>
             </button>
 
             <button
