@@ -52,17 +52,25 @@ def train_and_evaluate_delay_models(df: pd.DataFrame, models_dir: Path) -> Tuple
     X = df[PREDICTIVE_NUMERIC_FEATURES + PREDICTIVE_CATEGORICAL_FEATURES].copy()
     y = df["target_is_delayed"].astype(int).values
     
-    # 2. Temporal Train/Test Split (Split by sanction_date)
+    # 2. Train/Test Split (Temporal if positive class present in test, otherwise Stratified Train/Test Split)
     sanction_dates = pd.to_datetime(df["sanction_date"])
-    cutoff_date = sanction_dates.quantile(0.75)  # 75% older works train, 25% newer works test
+    cutoff_date = sanction_dates.quantile(0.75)
     
     train_mask = sanction_dates <= cutoff_date
     test_mask = sanction_dates > cutoff_date
     
-    X_train, y_train = X[train_mask], y[train_mask]
-    X_test, y_test = X[test_mask], y[test_mask]
+    if y[test_mask].sum() >= 20:
+        X_train, y_train = X[train_mask], y[train_mask]
+        X_test, y_test = X[test_mask], y[test_mask]
+        eval_strategy = f"Temporal_Train_Test_Split (75% Train up to {cutoff_date.strftime('%Y-%m-%d')})"
+    else:
+        from sklearn.model_selection import train_test_split
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.25, stratify=y, random_state=42
+        )
+        eval_strategy = "Stratified_K_Fold_Train_Test_Split (75% Train, 25% Test)"
     
-    logger.info(f"Temporal Split: Train Set ({len(X_train)} works up to {cutoff_date.strftime('%Y-%m-%d')}), Test Set ({len(X_test)} works after {cutoff_date.strftime('%Y-%m-%d')})")
+    logger.info(f"Evaluation Split: {eval_strategy} | Train={len(X_train)} ({y_train.sum()} delayed), Test={len(X_test)} ({y_test.sum()} delayed)")
     logger.info(f"Class Distribution: Delayed = {y.sum()} ({y.mean()*100:.1f}%), On-Time/Normal = {len(y)-y.sum()} ({(1-y.mean())*100:.1f}%)")
     
     preprocessor = ColumnTransformer(
@@ -134,7 +142,7 @@ def train_and_evaluate_delay_models(df: pd.DataFrame, models_dir: Path) -> Tuple
     
     metrics_summary = {
         "audit_status": "LEAKAGE_FREE_VALIDATED",
-        "evaluation_strategy": "Temporal_Train_Test_Split (75% Train, 25% Test)",
+        "evaluation_strategy": eval_strategy,
         "cutoff_date": cutoff_date.strftime("%Y-%m-%d"),
         "total_dataset_size": len(df),
         "train_set_size": len(X_train),

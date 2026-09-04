@@ -44,7 +44,8 @@ def find_duplicate_works(df: pd.DataFrame, models_dir: Path) -> Tuple[np.ndarray
     
     vectorizer = TfidfVectorizer(
         ngram_range=(1, 3),
-        max_features=5000,
+        max_features=25000,
+        min_df=2,
         stop_words="english",
         sublinear_tf=True
     )
@@ -82,64 +83,59 @@ def find_duplicate_works(df: pd.DataFrame, models_dir: Path) -> Tuple[np.ndarray
         sub_matrix = tfidf_matrix[indices]
         sim_matrix = cosine_similarity(sub_matrix)
         
-        for i_sub in range(len(indices)):
-            for j_sub in range(i_sub + 1, len(indices)):
-                idx_a = indices[i_sub]
-                idx_b = indices[j_sub]
+        # Only iterate candidate pairs with text similarity >= 0.55 in upper triangle
+        high_sim_pairs = np.argwhere(np.triu(sim_matrix, k=1) >= 0.55)
+        for i_sub, j_sub in high_sim_pairs:
+            idx_a = indices[i_sub]
+            idx_b = indices[j_sub]
+            
+            pair_key = tuple(sorted([work_ids[idx_a], work_ids[idx_b]]))
+            if pair_key in seen_pairs:
+                continue
+            seen_pairs.add(pair_key)
+            
+            text_sim = float(sim_matrix[i_sub, j_sub])
+            cost_a = sanction_amounts[idx_a]
+            cost_b = sanction_amounts[idx_b]
+            max_cost = max(cost_a, cost_b, 1.0)
+            cost_diff_ratio = abs(cost_a - cost_b) / max_cost
+            cost_sim = max(0.0, 1.0 - cost_diff_ratio)
+            
+            dist_km = haversine_distance_km(lats[idx_a], lons[idx_a], lats[idx_b], lons[idx_b])
+            loc_sim = max(0.0, 1.0 - (dist_km / 25.0))
+            
+            delta_days = abs((sanction_dates[idx_a] - sanction_dates[idx_b]) / np.timedelta64(1, 'D'))
+            time_sim = max(0.0, 1.0 - (delta_days / 730.0))
+            
+            comp_dup_score = round(float(
+                (0.50 * text_sim + 0.25 * cost_sim + 0.15 * loc_sim + 0.10 * time_sim) * 100.0
+            ), 2)
+            
+            if comp_dup_score >= 50.0:
+                duplicate_pairs_found += 1
+                duplicate_scores[idx_a] = max(duplicate_scores[idx_a], comp_dup_score)
+                duplicate_scores[idx_b] = max(duplicate_scores[idx_b], comp_dup_score)
                 
-                # Prevent self-comparison
-                if idx_a == idx_b:
-                    continue
-                    
-                pair_key = tuple(sorted([work_ids[idx_a], work_ids[idx_b]]))
-                if pair_key in seen_pairs:
-                    continue
-                seen_pairs.add(pair_key)
-                
-                text_sim = float(sim_matrix[i_sub, j_sub])
-                
-                if text_sim >= 0.55:
-                    cost_a = sanction_amounts[idx_a]
-                    cost_b = sanction_amounts[idx_b]
-                    max_cost = max(cost_a, cost_b, 1.0)
-                    cost_diff_ratio = abs(cost_a - cost_b) / max_cost
-                    cost_sim = max(0.0, 1.0 - cost_diff_ratio)
-                    
-                    dist_km = haversine_distance_km(lats[idx_a], lons[idx_a], lats[idx_b], lons[idx_b])
-                    loc_sim = max(0.0, 1.0 - (dist_km / 25.0))
-                    
-                    delta_days = abs((sanction_dates[idx_a] - sanction_dates[idx_b]) / np.timedelta64(1, 'D'))
-                    time_sim = max(0.0, 1.0 - (delta_days / 730.0))
-                    
-                    comp_dup_score = round(float(
-                        (0.50 * text_sim + 0.25 * cost_sim + 0.15 * loc_sim + 0.10 * time_sim) * 100.0
-                    ), 2)
-                    
-                    if comp_dup_score >= 50.0:
-                        duplicate_pairs_found += 1
-                        duplicate_scores[idx_a] = max(duplicate_scores[idx_a], comp_dup_score)
-                        duplicate_scores[idx_b] = max(duplicate_scores[idx_b], comp_dup_score)
-                        
-                        match_info_a = {
-                            "paired_work_id": str(work_ids[idx_b]),
-                            "similarity_score": comp_dup_score,
-                            "text_similarity": round(text_sim * 100, 1),
-                            "cost_similarity": round(cost_sim * 100, 1),
-                            "distance_km": round(dist_km, 2),
-                            "spatial_resolution": "District-level approximate spatial proximity",
-                            "date_difference_days": int(delta_days)
-                        }
-                        match_info_b = {
-                            "paired_work_id": str(work_ids[idx_a]),
-                            "similarity_score": comp_dup_score,
-                            "text_similarity": round(text_sim * 100, 1),
-                            "cost_similarity": round(cost_sim * 100, 1),
-                            "distance_km": round(dist_km, 2),
-                            "spatial_resolution": "District-level approximate spatial proximity",
-                            "date_difference_days": int(delta_days)
-                        }
-                        duplicate_matches[idx_a].append(match_info_a)
-                        duplicate_matches[idx_b].append(match_info_b)
+                match_info_a = {
+                    "paired_work_id": str(work_ids[idx_b]),
+                    "similarity_score": comp_dup_score,
+                    "text_similarity": round(text_sim * 100, 1),
+                    "cost_similarity": round(cost_sim * 100, 1),
+                    "distance_km": round(dist_km, 2),
+                    "spatial_resolution": "District-level approximate spatial proximity",
+                    "date_difference_days": int(delta_days)
+                }
+                match_info_b = {
+                    "paired_work_id": str(work_ids[idx_a]),
+                    "similarity_score": comp_dup_score,
+                    "text_similarity": round(text_sim * 100, 1),
+                    "cost_similarity": round(cost_sim * 100, 1),
+                    "distance_km": round(dist_km, 2),
+                    "spatial_resolution": "District-level approximate spatial proximity",
+                    "date_difference_days": int(delta_days)
+                }
+                duplicate_matches[idx_a].append(match_info_a)
+                duplicate_matches[idx_b].append(match_info_b)
 
     logger.info(f"Duplicate scan complete: Found {duplicate_pairs_found} distinct candidate pairs.")
     return duplicate_scores, duplicate_matches

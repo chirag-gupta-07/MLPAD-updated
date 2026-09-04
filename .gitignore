@@ -71,8 +71,12 @@ data/citizen_evidence/*.db
 data/citizen_evidence/uploads/*
 !data/citizen_evidence/uploads/demo_evidence_*.jpg
 
-# Large Local Raw Datasets
-MPLADs datsets/
-MPLADs datasets/
+# Large Local Raw & Processed Datasets
 data/raw/
+data/processed/*.csv
+data/processed/*.parquet
+!data/processed/.gitkeep
+backend/app/db/*.csv
+backend/app/db/*.parquet
+
 

@@ -28,7 +28,7 @@ def list_works(
     )
 
 
-@router.get("/{work_id}")
+@router.get("/{work_id:path}")
 def get_work_detail(work_id: str) -> Dict[str, Any]:
     work = get_work_by_id(work_id)
     if not work:

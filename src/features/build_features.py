@@ -60,18 +60,34 @@ def compute_pre_kickoff_features(df: pd.DataFrame) -> pd.DataFrame:
         1.0
     )
     
-    # 5. Peer Group Statistics (Progressive Fallback: District+Sector -> State+Sector -> National Sector)
-    # Computed on historical basis
-    sector_medians = df.groupby("sector")["sanctioned_amount"].median().to_dict()
-    df["sector_median_cost"] = df["sector"].map(sector_medians)
+    # 5. Semantic Asset Classification (Correcting Clerical Dropdown Mismatches)
+    # If a major capital asset (e.g., State Hospital, Medical College, Major Bridge) is logged under
+    # a generic category like 'Community Halls', map it to its true functional asset class
+    desc_lower = df["work_description"].fillna("").astype(str).str.lower()
     
-    state_sector_grp = df.groupby(["state", "sector"])["sanctioned_amount"].agg(["median", "count"])
-    def get_peer_median(row):
-        key = (row["state"], row["sector"])
-        if key in state_sector_grp.index and state_sector_grp.loc[key, "count"] >= 5:
-            return state_sector_grp.loc[key, "median"]
-        return row["sector_median_cost"]
-    df["peer_median_cost"] = df.apply(get_peer_median, axis=1)
+    is_major_hospital = desc_lower.str.contains(r"hospital|medical college|sub-divisional hospital|trauma centre|district hospital", regex=True)
+    is_major_bridge = desc_lower.str.contains(r"\bbridge\b|\bflyover\b|\brailway overbridge\b|\brob\b", regex=True)
+    is_solar_light = desc_lower.str.contains(r"high mast|solar light|street light|mast light", regex=True)
+    is_drinking_water = desc_lower.str.contains(r"handpump|hand pump|borewell|tube well|drinking water", regex=True)
+
+    df["semantic_sector"] = df["sector"]
+    df.loc[is_major_hospital & (df["sector"] != "Public Health & Sanitation"), "semantic_sector"] = "Public Health & Sanitation"
+    df.loc[is_major_bridge & (df["sector"] != "Roads, Pathways & Bridges"), "semantic_sector"] = "Roads, Pathways & Bridges"
+    df.loc[is_solar_light & (df["sector"] != "Rural Electrification & Solar Lighting"), "semantic_sector"] = "Rural Electrification & Solar Lighting"
+    df.loc[is_drinking_water & (df["sector"] != "Drinking Water Infrastructure"), "semantic_sector"] = "Drinking Water Infrastructure"
+
+    # Peer Group Statistics computed on Semantic Asset Category
+    sector_medians = df.groupby("semantic_sector")["sanctioned_amount"].median()
+    df["sector_median_cost"] = df["semantic_sector"].map(sector_medians)
+    
+    state_sector_medians = df.groupby(["state", "semantic_sector"])["sanctioned_amount"].median()
+    state_sector_counts = df.groupby(["state", "semantic_sector"])["sanctioned_amount"].count()
+    valid_state_pairs = state_sector_counts[state_sector_counts >= 5].index
+    filtered_medians = state_sector_medians.loc[state_sector_medians.index.isin(valid_state_pairs)]
+    
+    state_sec_map = df.set_index(["state", "semantic_sector"]).index.map(filtered_medians)
+    df["peer_median_cost"] = np.where(pd.notnull(state_sec_map), state_sec_map, df["sector_median_cost"])
+    df["peer_median_cost"] = df["peer_median_cost"].fillna(df["sanctioned_amount"]).replace(0.0, 1.0)
     
     df["cost_vs_peer_median_ratio"] = np.where(
         df["peer_median_cost"] > 0,
@@ -79,21 +95,14 @@ def compute_pre_kickoff_features(df: pd.DataFrame) -> pd.DataFrame:
         1.0
     )
     
-    # 6. Sector Cost Z-Score
-    sector_stats = df.groupby("sector")["sanctioned_amount"].agg(["mean", "std"])
-    def get_zscore(row):
-        sec = row["sector"]
-        if sec in sector_stats.index:
-            mean = sector_stats.loc[sec, "mean"]
-            std = sector_stats.loc[sec, "std"]
-            if std > 0:
-                return (row["sanctioned_amount"] - mean) / std
-        return 0.0
-    df["peer_cost_zscore"] = df.apply(get_zscore, axis=1)
+    # 6. Sector Cost Z-Score (Vectorized on Semantic Group)
+    sec_means = df.groupby("semantic_sector")["sanctioned_amount"].transform("mean")
+    sec_stds = df.groupby("semantic_sector")["sanctioned_amount"].transform("std").fillna(1.0).replace(0.0, 1.0)
+    df["peer_cost_zscore"] = ((df["sanctioned_amount"] - sec_means) / sec_stds).fillna(0.0)
     
     # 7. Agency Past Experience Count
-    agency_counts = df.groupby("implementing_agency")["work_id"].count().to_dict()
-    df["agency_work_volume"] = df["implementing_agency"].map(agency_counts).fillna(1)
+    agency_counts = df.groupby("implementing_agency")["work_id"].transform("count")
+    df["agency_work_volume"] = agency_counts.fillna(1)
     
     return df
 

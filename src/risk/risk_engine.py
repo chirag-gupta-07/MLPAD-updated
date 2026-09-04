@@ -74,25 +74,27 @@ def calculate_composite_risk(df: pd.DataFrame) -> pd.DataFrame:
     )
     
     # Severe isolated anomaly booster (if any dimension has an extreme spike >= 85)
-    severe_boost = np.where((fin >= 85.0) | (util >= 85.0) | (dup >= 80.0) | (stall >= 80.0), 20.0, 0.0)
+    severe_boost = np.where((fin >= 85.0) | (util >= 85.0) | (dup >= 85.0) | (stall >= 85.0), 15.0, 0.0)
     
     df["composite_risk_score"] = np.round(np.clip(composite_base + severe_boost, 0.0, 100.0), 2)
     
-    def get_risk_tier(score: float) -> str:
-        if score >= 65.0:
-            return "HIGH"
-        elif score >= 38.0:
-            return "MEDIUM"
-        else:
-            return "LOW"
-            
-    df["risk_level"] = df["composite_risk_score"].apply(get_risk_tier)
+    df["risk_level"] = np.where(
+        df["composite_risk_score"] >= 65.0, "HIGH",
+        np.where(df["composite_risk_score"] >= 38.0, "MEDIUM", "LOW")
+    )
     df["risk_percentile"] = np.round(df["composite_risk_score"].rank(pct=True) * 100.0, 1)
     
-    # Compute Data Quality Score & Confidence
-    quality_tuples = [calculate_data_quality_and_confidence(row) for _, row in df.iterrows()]
-    df["data_quality_score"] = [q[0] for q in quality_tuples]
-    df["model_confidence"] = [q[1] for q in quality_tuples]
+    # Vectorized Data Quality Score & Confidence
+    p1 = (df.get("sanctioned_amount", pd.Series(0, index=df.index)).notnull() & (df.get("sanctioned_amount", pd.Series(0, index=df.index)) > 0)).astype(int)
+    p2 = df.get("total_expenditure", pd.Series(None, index=df.index)).notnull().astype(int)
+    p3 = df.get("sanction_date", pd.Series(None, index=df.index)).notnull().astype(int)
+    p4 = df.get("expected_completion_date", pd.Series(None, index=df.index)).notnull().astype(int)
+    p5 = (df.get("work_description", pd.Series("", index=df.index)).fillna("").astype(str).str.len() > 15).astype(int)
+    p6 = (df.get("implementing_agency", pd.Series("", index=df.index)).fillna("") != "Not Specified").astype(int)
+    
+    total_points = p1 + p2 + p3 + p4 + p5 + p6
+    df["data_quality_score"] = np.round((total_points / 6.0) * 100.0, 1)
+    df["model_confidence"] = np.where(df["data_quality_score"] >= 85.0, "HIGH", np.where(df["data_quality_score"] >= 60.0, "MEDIUM", "LOW"))
     
     district_risk_mean = df.groupby("district")["composite_risk_score"].transform("mean")
     df["district_avg_risk_score"] = np.round(district_risk_mean, 2)

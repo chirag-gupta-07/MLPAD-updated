@@ -1,12 +1,12 @@
 {
   "audit_status": "LEAKAGE_FREE_VALIDATED",
-  "evaluation_strategy": "Temporal_Train_Test_Split (75% Train, 25% Test)",
-  "cutoff_date": "2024-07-31",
-  "total_dataset_size": 1500,
-  "train_set_size": 1126,
-  "test_set_size": 374,
-  "delayed_count": 991,
-  "on_time_count": 509,
+  "evaluation_strategy": "Stratified_K_Fold_Train_Test_Split (75% Train, 25% Test)",
+  "cutoff_date": "2026-03-09",
+  "total_dataset_size": 79082,
+  "train_set_size": 59311,
+  "test_set_size": 19771,
+  "delayed_count": 8066,
+  "on_time_count": 71016,
   "predictive_features": [
     "sanctioned_amount",
     "estimated_cost",
@@ -28,59 +28,59 @@
     "progress_rate_per_100d",
     "days_since_last_payment"
   ],
-  "best_model": "RandomForest",
+  "best_model": "GradientBoosting",
   "model_comparison": {
     "Baseline_LogisticRegression": {
-      "Accuracy": 55.35,
-      "Precision": 57.84,
-      "Recall": 78.3,
-      "F1-Score": 66.53,
-      "ROC-AUC": 0.5323,
-      "PR-AUC": 0.6407,
+      "Accuracy": 89.8,
+      "Precision": 0.0,
+      "Recall": 0.0,
+      "F1-Score": 0.0,
+      "ROC-AUC": 0.6874,
+      "PR-AUC": 0.1806,
       "Confusion_Matrix": [
         [
-          41,
-          121
+          17754,
+          0
         ],
         [
-          46,
-          166
+          2017,
+          0
         ]
       ]
     },
     "RandomForest": {
-      "Accuracy": 55.61,
-      "Precision": 56.5,
-      "Recall": 94.34,
-      "F1-Score": 70.67,
-      "ROC-AUC": 0.5717,
-      "PR-AUC": 0.6741,
+      "Accuracy": 90.88,
+      "Precision": 91.44,
+      "Recall": 11.65,
+      "F1-Score": 20.67,
+      "ROC-AUC": 0.8201,
+      "PR-AUC": 0.4699,
       "Confusion_Matrix": [
         [
-          8,
-          154
+          17732,
+          22
         ],
         [
-          12,
-          200
+          1782,
+          235
         ]
       ]
     },
     "GradientBoosting": {
-      "Accuracy": 56.15,
-      "Precision": 59.09,
-      "Recall": 73.58,
-      "F1-Score": 65.55,
-      "ROC-AUC": 0.5678,
-      "PR-AUC": 0.6658,
+      "Accuracy": 91.66,
+      "Precision": 98.94,
+      "Recall": 18.49,
+      "F1-Score": 31.16,
+      "ROC-AUC": 0.8371,
+      "PR-AUC": 0.5301,
       "Confusion_Matrix": [
         [
-          54,
-          108
+          17750,
+          4
         ],
         [
-          56,
-          156
+          1644,
+          373
         ]
       ]
     }

@@ -160,22 +160,37 @@ def get_risk_summary() -> Dict[str, Any]:
     }
 
 
-def get_map_markers() -> List[Dict[str, Any]]:
+def get_map_markers(
+    limit: int = 2500,
+    risk_level: Optional[str] = None,
+    state: Optional[str] = None
+) -> List[Dict[str, Any]]:
     df = get_dataframe()
-    markers = []
-    for _, row in df.iterrows():
-        markers.append({
-            "work_id": str(row.get("work_id", "")),
-            "description": str(row.get("work_description", ""))[:80] + "...",
-            "state": str(row.get("state", "")),
-            "district": str(row.get("district", "")),
-            "sector": str(row.get("sector", "")),
-            "latitude": float(row.get("latitude", 20.5937)),
-            "longitude": float(row.get("longitude", 78.9629)),
-            "composite_risk_score": float(row.get("composite_risk_score", 0.0)),
-            "risk_level": str(row.get("risk_level", "LOW")),
-            "sanctioned_amount": float(row.get("sanctioned_amount", 0.0)),
-            "total_expenditure": float(row.get("total_expenditure", 0.0)),
-            "status": str(row.get("status", "IN_PROGRESS"))
-        })
-    return markers
+    
+    if risk_level and risk_level.upper() in ["HIGH", "MEDIUM", "LOW"]:
+        df = df[df["risk_level"] == risk_level.upper()]
+        
+    if state and state.strip():
+        df = df[df["state"].str.lower() == state.strip().lower()]
+        
+    # Sort by risk score descending so high risk works always surface first on the GIS map
+    df_sorted = df.sort_values(by="composite_risk_score", ascending=False).head(limit)
+    
+    marker_cols = [
+        "work_id", "work_description", "state", "district", "sector",
+        "latitude", "longitude", "composite_risk_score", "risk_level",
+        "sanctioned_amount", "total_expenditure", "status"
+    ]
+    available_cols = [c for c in marker_cols if c in df_sorted.columns]
+    records = df_sorted[available_cols].to_dict(orient="records")
+    
+    for r in records:
+        desc = str(r.get("work_description", ""))
+        r["description"] = (desc[:80] + "...") if len(desc) > 80 else desc
+        r["latitude"] = float(r.get("latitude", 20.5937))
+        r["longitude"] = float(r.get("longitude", 78.9629))
+        r["composite_risk_score"] = float(r.get("composite_risk_score", 0.0))
+        r["sanctioned_amount"] = float(r.get("sanctioned_amount", 0.0))
+        r["total_expenditure"] = float(r.get("total_expenditure", 0.0))
+        
+    return records

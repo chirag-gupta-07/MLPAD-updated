@@ -34,10 +34,6 @@ def run_eda(master_path: Path, output_report_path: Path) -> str:
     # Status Stats
     status_counts = df["status"].value_counts().to_dict()
     
-    # Anomaly Distribution
-    anomaly_counts = df["is_injected_anomaly"].value_counts().to_dict()
-    anomaly_types = df["synthetic_anomaly_type"].value_counts().to_dict()
-    
     # Build Markdown Report
     report = []
     report.append("# MPLADS Master Dataset Exploratory Data Analysis (EDA) Report\n")
@@ -84,13 +80,19 @@ def run_eda(master_path: Path, output_report_path: Path) -> str:
         report.append(f"| {st} | {count:,} | {share:.1f}% |")
     report.append("")
     
-    report.append("## 5. Documented Anomaly & Risk Categories")
-    report.append(f"- **Normal / Compliant Works**: {anomaly_counts.get(False, 0):,} ({anomaly_counts.get(False, 0)/total_rows*100:.1f}%)")
-    report.append(f"- **Documented Risk Flags**: {anomaly_counts.get(True, 0):,} ({anomaly_counts.get(True, 0)/total_rows*100:.1f}%)\n")
-    report.append("| Risk / Anomaly Category | Count |")
-    report.append("| :--- | :--- |")
-    for at, count in anomaly_types.items():
-        report.append(f"| {at} | {count:,} |")
+    if "is_injected_anomaly" in df.columns:
+        anomaly_counts = df["is_injected_anomaly"].value_counts().to_dict()
+        anomaly_types = df["synthetic_anomaly_type"].value_counts().to_dict()
+        report.append("## 5. Documented Anomaly & Risk Categories")
+        report.append(f"- **Normal / Compliant Works**: {anomaly_counts.get(False, 0):,} ({anomaly_counts.get(False, 0)/total_rows*100:.1f}%)")
+        report.append(f"- **Documented Risk Flags**: {anomaly_counts.get(True, 0):,} ({anomaly_counts.get(True, 0)/total_rows*100:.1f}%)\n")
+        report.append("| Risk / Anomaly Category | Count |")
+        report.append("| :--- | :--- |")
+        for at, count in anomaly_types.items():
+            report.append(f"| {at} | {count:,} |")
+    else:
+        report.append("## 5. Risk Assessment Overview")
+        report.append("Works evaluated under Multi-Signal Calibrated Risk Engine across Delay, Financial Anomaly, Utilization, and Semantic Duplicate dimensions.")
         
     report_text = "\n".join(report)
     output_report_path.parent.mkdir(parents=True, exist_ok=True)

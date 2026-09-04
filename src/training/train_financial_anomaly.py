@@ -42,38 +42,32 @@ def compute_progressive_peer_baselines(df: pd.DataFrame) -> pd.DataFrame:
     """
     Computes hierarchical peer baselines with progressive fallback:
     District + Sector -> State + Sector -> National Sector
+    Uses semantic_sector if present to respect genuine capital infrastructure norms.
     """
     df = df.copy()
+    sec_col = "semantic_sector" if "semantic_sector" in df.columns else "sector"
     
     # 1. National Sector Median
-    national_sector_med = df.groupby("sector")["sanctioned_amount"].median().to_dict()
+    national_sector_med = df.groupby(sec_col)["sanctioned_amount"].median()
     
     # 2. State + Sector Medians
-    state_sec_stats = df.groupby(["state", "sector"])["sanctioned_amount"].agg(["median", "count"])
+    state_sec_medians = df.groupby(["state", sec_col])["sanctioned_amount"].median()
+    state_sec_counts = df.groupby(["state", sec_col])["sanctioned_amount"].count()
+    valid_state = state_sec_counts[state_sec_counts >= MIN_PEER_GROUP_SIZE].index
     
     # 3. District + Sector Medians
-    dist_sec_stats = df.groupby(["district", "sector"])["sanctioned_amount"].agg(["median", "count"])
+    dist_sec_medians = df.groupby(["district", sec_col])["sanctioned_amount"].median()
+    dist_sec_counts = df.groupby(["district", sec_col])["sanctioned_amount"].count()
+    valid_dist = dist_sec_counts[dist_sec_counts >= MIN_PEER_GROUP_SIZE].index
     
-    peer_medians = []
-    peer_levels = []
+    dist_map = df.set_index(["district", sec_col]).index.map(dist_sec_medians.loc[dist_sec_medians.index.isin(valid_dist)])
+    state_map = df.set_index(["state", sec_col]).index.map(state_sec_medians.loc[state_sec_medians.index.isin(valid_state)])
+    nat_map = df[sec_col].map(national_sector_med)
     
-    for _, row in df.iterrows():
-        dist_key = (row["district"], row["sector"])
-        state_key = (row["state"], row["sector"])
-        sec = row["sector"]
-        
-        if dist_key in dist_sec_stats.index and dist_sec_stats.loc[dist_key, "count"] >= MIN_PEER_GROUP_SIZE:
-            peer_medians.append(dist_sec_stats.loc[dist_key, "median"])
-            peer_levels.append("District+Sector")
-        elif state_key in state_sec_stats.index and state_sec_stats.loc[state_key, "count"] >= MIN_PEER_GROUP_SIZE:
-            peer_medians.append(state_sec_stats.loc[state_key, "median"])
-            peer_levels.append("State+Sector")
-        else:
-            peer_medians.append(national_sector_med.get(sec, row["sanctioned_amount"]))
-            peer_levels.append("National+Sector")
-            
-    df["progressive_peer_median"] = peer_medians
-    df["peer_group_level"] = peer_levels
+    df["peer_group_level"] = np.where(pd.notnull(dist_map), "District+Sector", np.where(pd.notnull(state_map), "State+Sector", "National+Sector"))
+    df["progressive_peer_median"] = np.where(pd.notnull(dist_map), dist_map, np.where(pd.notnull(state_map), state_map, nat_map))
+    df["progressive_peer_median"] = df["progressive_peer_median"].fillna(df["sanctioned_amount"]).replace(0.0, 1.0)
+    
     df["cost_vs_peer_median_ratio"] = np.where(
         df["progressive_peer_median"] > 0,
         df["sanctioned_amount"] / df["progressive_peer_median"],
