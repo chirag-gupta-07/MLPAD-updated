@@ -67,12 +67,16 @@ Thumbs.db
 desktop.ini
 
 # Citizen Evidence Local Data & Uploads
-data/citizen_evidence/*.db
+data/citizen_evidence/*.db*
 data/citizen_evidence/uploads/*
 !data/citizen_evidence/uploads/demo_evidence_*.jpg
 
 # Lifecycle Local DB
-data/lifecycle/*.db
+data/lifecycle/*.db*
+
+# Operations Local DB
+data/operations/*.db*
+!data/operations/.gitkeep
 
 
 # Large Local Raw & Processed Datasets

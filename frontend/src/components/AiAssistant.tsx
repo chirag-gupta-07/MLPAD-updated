@@ -52,21 +52,21 @@ export const AiAssistant: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[650px] overflow-hidden">
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col h-[calc(100vh-140px)] overflow-hidden">
       
-      {/* Assistant Header */}
-      <div className="p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+      {/* Header */}
+      <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between shrink-0">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center">
-            <Bot className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
+            <Bot className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <h3 className="font-bold text-sm">MPLADS AI Insights Assistant</h3>
-            <p className="text-xs text-slate-400">Contextual Natural Language Q&A on MPLADS Data Lake</p>
+            <h3 className="font-bold text-slate-900 dark:text-slate-100">Project Risk Copilot</h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">Powered by domain-specific LLM trained on MoSPI guidelines</p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-1 text-xs text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-500/30">
+        <div className="flex items-center space-x-1 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-500/30">
           <Sparkles className="w-3.5 h-3.5 mr-1" />
           <span>Decision Support Enabled</span>
         </div>

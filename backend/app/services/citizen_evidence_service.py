@@ -193,10 +193,10 @@ def get_enriched_evidence_list(
     return raw_list
 
 
-def seed_demo_citizen_evidence():
-    """Seeds initial demonstration citizen evidence records if database is empty."""
+def seed_demo_citizen_evidence(force: bool = False):
+    """Seeds initial demonstration citizen evidence records if database is empty or forced."""
     init_db()
-    if get_evidence_count() > 0:
+    if not force and get_evidence_count() > 0:
         return
 
     df = get_dataframe()

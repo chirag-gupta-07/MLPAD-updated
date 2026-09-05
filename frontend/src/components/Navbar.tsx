@@ -1,111 +1,125 @@
 import React from 'react';
-import { ShieldAlert, BarChart3, Map, Bot, Upload, RefreshCw, Camera } from 'lucide-react';
+import { ShieldAlert, BarChart3, Map, Bot, Upload, RefreshCw, Camera, Sun, Moon, Monitor } from 'lucide-react';
+import { useTheme } from './ThemeProvider';
+
+export type TabType = 'overview' | 'works' | 'approvals' | 'payments' | 'public-requests' | 'gis' | 'evidence' | 'assistant';
 
 interface NavbarProps {
-  activeTab: 'overview' | 'works' | 'gis' | 'assistant' | 'evidence';
-  setActiveTab: (tab: 'overview' | 'works' | 'gis' | 'assistant' | 'evidence') => void;
+  activeTab: TabType;
+  setActiveTab: (tab: TabType) => void;
   openUploadModal: () => void;
 }
 
+import axios from 'axios';
+
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUploadModal }) => {
+  const { theme, setTheme } = useTheme();
+  const [isResetting, setIsResetting] = React.useState(false);
+
+  const tabs: { id: TabType; label: string }[] = [
+    { id: 'overview', label: 'Dashboard' },
+    { id: 'works', label: 'Projects' },
+    { id: 'approvals', label: 'Approvals' },
+    { id: 'payments', label: 'Payments' },
+    { id: 'public-requests', label: 'Public Requests' },
+    { id: 'gis', label: 'GIS Map' },
+    { id: 'evidence', label: 'Evidence' },
+    { id: 'assistant', label: 'AI Assistant' },
+  ];
+
+  const handleResetDemo = async () => {
+    const confirmed = window.confirm(
+      "Reset all test changes and restore the original baseline demo state for judges?\n\nThis will reinitialize all databases and baseline scenarios."
+    );
+    if (!confirmed) return;
+
+    setIsResetting(true);
+    try {
+      await axios.post('/api/system/reset-demo');
+      window.location.reload();
+    } catch (e: any) {
+      console.error('Reset failed:', e);
+      alert('Failed to reset demo state: ' + (e.response?.data?.detail || e.message));
+      setIsResetting(false);
+    }
+  };
+
   return (
-    <header className="bg-slate-900 text-white sticky top-0 z-50 shadow-md border-b border-slate-800">
+    <header className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 sticky top-0 z-50 shadow-sm border-b border-slate-200 dark:border-slate-800 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
           {/* Logo & Branding */}
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-600/30">
+            <div className="w-10 h-10 rounded bg-brand-600 flex items-center justify-center">
               <ShieldAlert className="w-6 h-6 text-white" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-bold text-lg tracking-tight">MPLADS Risk Intelligence</span>
-                <span className="bg-emerald-500/20 text-emerald-400 text-xs font-semibold px-2 py-0.5 rounded border border-emerald-500/30">
-                  SIH 2026
-                </span>
+                <span className="font-bold text-lg tracking-tight">MLPAD</span>
               </div>
-              <p className="text-xs text-slate-400">MoSPI · Data Informatics & Innovation Division</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">MPLADS Risk Intelligence Platform</p>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="flex items-center space-x-1 bg-slate-800/60 p-1 rounded-lg border border-slate-700/50">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'overview'
-                  ? 'bg-emerald-600 text-white shadow'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>Overview</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('works')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'works'
-                  ? 'bg-emerald-600 text-white shadow'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <ShieldAlert className="w-4 h-4" />
-              <span>Risk Inspector</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('gis')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'gis'
-                  ? 'bg-emerald-600 text-white shadow'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <Map className="w-4 h-4" />
-              <span>GIS Map</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('evidence')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'evidence'
-                  ? 'bg-indigo-600 text-white shadow'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <Camera className="w-4 h-4" />
-              <span>Citizen Evidence</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('assistant')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'assistant'
-                  ? 'bg-emerald-600 text-white shadow'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <Bot className="w-4 h-4" />
-              <span>AI Assistant</span>
-            </button>
+          {/* Navigation Tabs - Text Links */}
+          <nav className="hidden lg:flex items-center space-x-4">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`py-5 text-sm font-medium transition-colors border-b-2 ${
+                  activeTab === tab.id
+                    ? 'border-brand-600 text-brand-700 dark:text-brand-400'
+                    : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-4">
+            {/* Theme Toggle */}
+            <div className="flex items-center space-x-1 bg-slate-100 dark:bg-slate-800 rounded-md p-1 border border-slate-200 dark:border-slate-700">
+              <button onClick={() => setTheme('light')} className={`p-1 rounded ${theme === 'light' ? 'bg-white shadow-sm dark:bg-slate-600 text-brand-600 dark:text-brand-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                <Sun className="w-4 h-4" />
+              </button>
+              <button onClick={() => setTheme('system')} className={`p-1 rounded ${theme === 'system' ? 'bg-white shadow-sm dark:bg-slate-600 text-brand-600 dark:text-brand-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                <Monitor className="w-4 h-4" />
+              </button>
+              <button onClick={() => setTheme('dark')} className={`p-1 rounded ${theme === 'dark' ? 'bg-white shadow-sm dark:bg-slate-600 text-brand-600 dark:text-brand-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                <Moon className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Role Dropdown Demo */}
+            <select className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-700 dark:text-slate-300">
+              <option>District Official</option>
+              <option>Site Supervisor</option>
+              <option>Authorized Authority</option>
+              <option>Public Citizen</option>
+            </select>
+
+            {/* Reset Demo Button */}
             <button
-              onClick={openUploadModal}
-              className="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 transition"
+              onClick={handleResetDemo}
+              disabled={isResetting}
+              title="Reset all test modifications and restore original demo state for judges"
+              className="flex items-center space-x-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2.5 py-1.5 rounded-md text-xs font-semibold transition"
             >
-              <Upload className="w-3.5 h-3.5" />
-              <span>Upload Data</span>
+              <RefreshCw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+              <span className="hidden md:inline">{isResetting ? 'Resetting...' : 'Reset Demo'}</span>
             </button>
 
-            <div className="hidden sm:flex items-center space-x-2 text-xs text-slate-400 border-l border-slate-800 pl-3">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Model Online (v1.0)</span>
-            </div>
+            <button
+              onClick={openUploadModal}
+              className="flex items-center space-x-1.5 bg-brand-600 hover:bg-brand-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition"
+            >
+              <Upload className="w-4 h-4" />
+              <span className="hidden sm:inline">Upload Data</span>
+            </button>
           </div>
 
         </div>

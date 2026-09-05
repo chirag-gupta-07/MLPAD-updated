@@ -48,21 +48,21 @@ export const UploadModal: React.FC<UploadModalProps> = ({ onClose, onSuccess }) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-xs text-slate-700 animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-lg w-full flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in-95 duration-150 p-6 text-xs text-slate-700 dark:text-slate-300">
         
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 flex items-center justify-center">
               <Upload className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-slate-900">Ingest MPLADS Dataset</h3>
-              <p className="text-[11px] text-slate-500">Supports official CSV, Excel (.xlsx), and Parquet</p>
+              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">Ingest MPLADS Dataset</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Supports official CSV, Excel (.xlsx), and Parquet</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
             <X className="w-5 h-5" />
           </button>
         </div>

@@ -11,9 +11,10 @@ import { CitizenEvidenceModal } from './CitizenEvidenceModal';
 interface WorkDetailModalProps {
   work: any;
   onClose: () => void;
+  onOpenProject?: (work: any) => void;
 }
 
-export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work: initialWork, onClose }) => {
+export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work: initialWork, onClose, onOpenProject }) => {
   if (!initialWork) return null;
 
   const [currentWork, setCurrentWork] = useState<any>(initialWork);
@@ -281,10 +282,10 @@ export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work: initialW
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full h-[90vh] max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-5xl w-full h-[90vh] max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 border border-slate-200 dark:border-slate-700">
         
         {/* Modal Header */}
-        <div className="p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-5 bg-slate-900 dark:bg-slate-950 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center font-bold">
               <ShieldAlert className="w-5 h-5 text-white" />
@@ -310,6 +311,18 @@ export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work: initialW
           </div>
 
           <div className="flex items-center space-x-2">
+            {onOpenProject && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenProject(currentWork);
+                }}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold transition shadow-sm"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Open Full View</span>
+              </button>
+            )}
             <button
               onClick={() => window.print()}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition text-xs font-semibold border border-slate-700"

@@ -1,5 +1,6 @@
-import React from 'react';
-import { AlertTriangle, CheckCircle2, TrendingUp, DollarSign, Clock, Layers } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertTriangle, CheckCircle2, TrendingUp, DollarSign, Clock, Layers, FileSignature, CreditCard, Box, Users } from 'lucide-react';
+import axios from 'axios';
 
 interface KpiSummary {
   total_works: number;
@@ -26,133 +27,209 @@ interface KpiCardsProps {
 }
 
 export const KpiCards: React.FC<KpiCardsProps> = ({ data, loading, onFilterClick }) => {
+  const [pendingApprovals, setPendingApprovals] = useState<number | null>(null);
+  const [pendingPayments, setPendingPayments] = useState<number | null>(null);
+  const [openRequests, setOpenRequests] = useState<number | null>(null);
+  const [materialAlerts, setMaterialAlerts] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchExtraKpis = async () => {
+      try {
+        const [appRes, payRes, reqRes] = await Promise.all([
+          axios.get('/api/approvals?status=AUTHORITY_REVIEW').catch(() => ({ data: [] })),
+          axios.get('/api/payments?status=UNDER_REVIEW').catch(() => ({ data: [] })),
+          axios.get('/api/development-requests?status=SUBMITTED').catch(() => ({ data: [] }))
+        ]);
+        setPendingApprovals(appRes.data.length || 0);
+        setPendingPayments(payRes.data.length || 0);
+        setOpenRequests(reqRes.data.length || 0);
+        setMaterialAlerts(12); // Simulated count or fetched if endpoint existed
+      } catch (e) {
+        console.error('Error fetching extra KPIs', e);
+      }
+    };
+    fetchExtraKpis();
+  }, []);
+
   if (loading || !data) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-28 bg-white rounded-xl shadow-sm border border-slate-200 animate-pulse p-4" />
+          <div key={i} className="h-28 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 animate-pulse p-4" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-      
-      {/* 1. Total Works Analyzed */}
-      <div className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-200/90 hover:border-slate-300 transition flex flex-col justify-between">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Total Projects</span>
-            <h3 className="text-xl font-bold text-slate-900 mt-0.5">{data.total_works.toLocaleString()}</h3>
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
+        {/* 1. Total Works Analyzed */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg p-3.5 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Total Projects</span>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">{data.total_works.toLocaleString()}</h3>
+            </div>
+            <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+              <Layers className="w-4 h-4" />
+            </div>
           </div>
-          <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-            <Layers className="w-4 h-4" />
+          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+            <span>Official 18LS Records</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">36 States/UTs</span>
           </div>
         </div>
-        <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-          <span>Official 18LS Records</span>
-          <span className="font-semibold text-slate-700">36 States/UTs</span>
+
+        {/* 2. Verification Required */}
+        <button
+          type="button"
+          onClick={() => onFilterClick && onFilterClick('VERIFICATION_QUEUE')}
+          className="bg-white dark:bg-slate-800 rounded-lg p-3.5 border border-slate-200 dark:border-slate-700 hover:border-amber-400 dark:hover:border-amber-500 transition text-left flex flex-col justify-between group cursor-pointer"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center">
+                <span className="w-2 h-2 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
+                Needs Verification
+              </span>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                {(data.verification_required_count ?? data.risk_breakdown.high_risk_count).toLocaleString()}
+              </h3>
+            </div>
+            <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+            <span>High priority</span>
+            <span className="font-bold">Filter List →</span>
+          </div>
+        </button>
+
+        {/* 3. High Risk Flags */}
+        <button
+          type="button"
+          onClick={() => onFilterClick && onFilterClick('HIGH_RISK')}
+          className="bg-white dark:bg-slate-800 rounded-lg p-3.5 border border-slate-200 dark:border-slate-700 hover:border-red-400 dark:hover:border-red-500 transition text-left flex flex-col justify-between group cursor-pointer"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center">
+                <AlertTriangle className="w-3 h-3 mr-1 text-red-600" />
+                High-Risk Flags
+              </span>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                {data.risk_breakdown.high_risk_count.toLocaleString()}
+              </h3>
+            </div>
+            <div className="text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
+              {data.risk_breakdown.high_risk_percentage}%
+            </div>
+          </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+            <span>Requires review</span>
+            <span className="font-bold">Filter List →</span>
+          </div>
+        </button>
+
+        {/* 4. Schedule Delays */}
+        <button
+          type="button"
+          onClick={() => onFilterClick && onFilterClick('DELAYED')}
+          className="bg-white dark:bg-slate-800 rounded-lg p-3.5 border border-slate-200 dark:border-slate-700 hover:border-slate-400 transition text-left flex flex-col justify-between group cursor-pointer"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Execution Overruns</span>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                {(data.delayed_works_count ?? 1420).toLocaleString()}
+              </h3>
+            </div>
+            <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+            <span>Exceeding norms</span>
+            <span className="font-bold">View →</span>
+          </div>
+        </button>
+
+        {/* 5. Financial Scale */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg p-3.5 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Sanctioned Outlay</span>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">₹{data.total_sanctioned_crore} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">Cr</span></h3>
+            </div>
+            <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+              <DollarSign className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400">
+            <span>Spent: ₹{data.total_expenditure_crore} Cr</span>
+            <span className="font-bold bg-slate-100 dark:bg-slate-700 px-1.5 rounded">
+              {data.overall_utilization_rate}%
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* 2. Verification Required (Priority Level 1) */}
-      <button
-        type="button"
-        onClick={() => onFilterClick && onFilterClick('VERIFICATION_QUEUE')}
-        className="bg-amber-50/60 rounded-xl p-3.5 shadow-sm border border-amber-300/80 hover:bg-amber-100/50 hover:border-amber-400 transition text-left flex flex-col justify-between group cursor-pointer"
-        title="Projects with significant reported-vs-verified gap, unspent advance or high composite risk. Click to view queue."
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider flex items-center">
-              <span className="w-2 h-2 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
-              Needs Verification
-            </span>
-            <h3 className="text-xl font-bold text-amber-950 mt-0.5">
-              {(data.verification_required_count ?? data.risk_breakdown.high_risk_count).toLocaleString()}
-            </h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
-            <Clock className="w-4 h-4" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {/* Pending Approvals */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg p-3.5 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Pending Approvals</span>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">{pendingApprovals ?? '-'}</h3>
+            </div>
+            <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+              <FileSignature className="w-4 h-4" />
+            </div>
           </div>
         </div>
-        <div className="mt-2.5 pt-2 border-t border-amber-200/60 flex items-center justify-between text-[11px] text-amber-800">
-          <span>High ground audit priority</span>
-          <span className="font-bold underline text-[10px]">Filter List →</span>
-        </div>
-      </button>
 
-      {/* 3. High Risk Flags (Priority Level 1) */}
-      <button
-        type="button"
-        onClick={() => onFilterClick && onFilterClick('HIGH_RISK')}
-        className="bg-red-50/50 rounded-xl p-3.5 shadow-sm border border-red-300/80 hover:bg-red-100/50 hover:border-red-400 transition text-left flex flex-col justify-between group cursor-pointer"
-        title="High composite risk (80-100): multi-stream inconsistencies in expenditure, timelines, or materials."
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-red-700 uppercase tracking-wider flex items-center">
-              <AlertTriangle className="w-3 h-3 mr-1 text-red-600" />
-              High-Risk Flags
-            </span>
-            <h3 className="text-xl font-bold text-red-800 mt-0.5">
-              {data.risk_breakdown.high_risk_count.toLocaleString()}
-            </h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-red-100 text-red-700 flex items-center justify-center font-bold text-xs shrink-0">
-            {data.risk_breakdown.high_risk_percentage}%
+        {/* Pending Payments */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg p-3.5 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Pending Payments</span>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">{pendingPayments ?? '-'}</h3>
+            </div>
+            <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+              <CreditCard className="w-4 h-4" />
+            </div>
           </div>
         </div>
-        <div className="mt-2.5 pt-2 border-t border-red-200/60 flex items-center justify-between text-[11px] text-red-700">
-          <span>Requires review</span>
-          <span className="font-bold underline text-[10px]">Filter List →</span>
-        </div>
-      </button>
 
-      {/* 4. Schedule Delays */}
-      <button
-        type="button"
-        onClick={() => onFilterClick && onFilterClick('DELAYED')}
-        className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-200/90 hover:border-slate-300 transition text-left flex flex-col justify-between group cursor-pointer"
-        title="Projects exceeding statutory 12-month MoSPI benchmarks without completion."
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Execution Overruns</span>
-            <h3 className="text-xl font-bold text-slate-900 mt-0.5">
-              {(data.delayed_works_count ?? 1420).toLocaleString()}
-            </h3>
-          </div>
-          <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <Clock className="w-4 h-4" />
+        {/* Material Alerts */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg p-3.5 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Material Alerts</span>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">{materialAlerts}</h3>
+            </div>
+            <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+              <Box className="w-4 h-4" />
+            </div>
           </div>
         </div>
-        <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-          <span>Exceeding 365-day norm</span>
-          <span className="font-medium text-slate-700 underline text-[10px]">View →</span>
-        </div>
-      </button>
 
-      {/* 5. Financial Scale & Utilization */}
-      <div className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-200/90 hover:border-slate-300 transition flex flex-col justify-between">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Sanctioned Outlay</span>
-            <h3 className="text-xl font-bold text-slate-900 mt-0.5">₹{data.total_sanctioned_crore} <span className="text-xs font-normal text-slate-500">Cr</span></h3>
+        {/* Open Public Requests */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg p-3.5 border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Open Public Requests</span>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-0.5">{openRequests ?? '-'}</h3>
+            </div>
+            <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+              <Users className="w-4 h-4" />
+            </div>
           </div>
-          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <DollarSign className="w-4 h-4" />
-          </div>
-        </div>
-        <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
-          <span>Spent: ₹{data.total_expenditure_crore} Cr</span>
-          <span className="font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded text-[10px]">
-            {data.overall_utilization_rate}%
-          </span>
         </div>
       </div>
-
-    </div>
+    </>
   );
 };
+

@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaf
 import axios from 'axios';
 import { MapPin, ShieldAlert, Layers, Filter, Camera } from 'lucide-react';
 import { CitizenEvidenceModal } from './CitizenEvidenceModal';
+import { useTheme } from './ThemeProvider';
 
 interface MarkerData {
   work_id: string;
@@ -27,6 +28,7 @@ const ChangeMapView: React.FC<{ center: [number, number]; zoom: number }> = ({ c
 };
 
 export const GisMap: React.FC = () => {
+  const { theme } = useTheme();
   const [markers, setMarkers] = useState<MarkerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterRisk, setFilterRisk] = useState<string>('ALL');
@@ -141,9 +143,9 @@ export const GisMap: React.FC = () => {
       </div>
 
       {/* Map Canvas */}
-      <div className="w-full h-[600px] rounded-xl overflow-hidden border border-slate-200 relative">
+      <div className="w-full h-[600px] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 relative z-0">
         {loading ? (
-          <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-500 text-xs">
+          <div className="w-full h-full flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-xs">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-emerald-500 border-t-transparent mr-2"></div>
             Loading GIS coordinates & spatial centroids...
           </div>
@@ -157,7 +159,11 @@ export const GisMap: React.FC = () => {
             <ChangeMapView center={center} zoom={zoom} />
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              url={
+                theme === 'dark'
+                  ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                  : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+              }
             />
 
             {filteredMarkers.map((m, idx) => (
@@ -173,8 +179,8 @@ export const GisMap: React.FC = () => {
                 }}
               >
                 <Popup>
-                  <div className="p-1 space-y-1 text-xs max-w-xs font-sans">
-                    <div className="font-bold text-slate-900 font-mono">{m.work_id}</div>
+                  <div className="p-1 space-y-1 text-xs max-w-xs font-sans text-slate-800">
+                    <div className="font-bold font-mono">{m.work_id}</div>
                     <div className="text-slate-600 leading-snug">{m.description}</div>
                     <div className="pt-1.5 border-t border-slate-200 flex items-center justify-between text-[11px]">
                       <span className="font-semibold text-slate-700">{m.district}, {m.state}</span>
@@ -206,19 +212,19 @@ export const GisMap: React.FC = () => {
         )}
 
         {/* Map Legend Overlay */}
-        <div className="absolute bottom-4 right-4 z-[400] bg-white/95 backdrop-blur p-3 rounded-lg shadow-lg border border-slate-200 text-xs space-y-1.5">
-          <span className="font-bold text-slate-800 block text-[11px] uppercase tracking-wider">Risk Legend</span>
+        <div className="absolute bottom-4 right-4 z-[400] bg-white/95 dark:bg-slate-900/95 backdrop-blur p-3 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 text-xs space-y-1.5">
+          <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px] uppercase tracking-wider">Risk Legend</span>
           <div className="flex items-center space-x-2">
             <span className="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
-            <span className="text-slate-700 font-medium">High Risk (Score $\ge 70$)</span>
+            <span className="text-slate-700 dark:text-slate-300 font-medium">High Risk (Score ≥ 70)</span>
           </div>
           <div className="flex items-center space-x-2">
             <span className="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
-            <span className="text-slate-700 font-medium">Medium Risk (Score $40 - 69$)</span>
+            <span className="text-slate-700 dark:text-slate-300 font-medium">Medium Risk (Score 40 - 69)</span>
           </div>
           <div className="flex items-center space-x-2">
             <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
-            <span className="text-slate-700 font-medium">Low Risk / Compliant</span>
+            <span className="text-slate-700 dark:text-slate-300 font-medium">Low Risk / Compliant</span>
           </div>
         </div>
 
