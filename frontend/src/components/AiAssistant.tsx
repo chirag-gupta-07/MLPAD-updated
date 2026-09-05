@@ -13,10 +13,10 @@ export const AiAssistant: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const samplePrompts = [
-    'Show top high risk works in Uttar Pradesh',
-    'Find duplicate infrastructure projects',
-    'Which projects are stalled with high fund disbursals?',
-    'Summarize delayed works across all states'
+    'Why is road work WS/MP498/2024-2025/133447 high risk?',
+    'What should I verify for Bhatpara Hospital WS/MP18249/2025-2026/153603?',
+    'Which projects have premature mobilization advances?',
+    'Show unverified progress execution gaps in Uttar Pradesh'
   ];
 
   const handleSend = async (textToSend?: string) => {

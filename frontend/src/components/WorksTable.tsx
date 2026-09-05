@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, Filter, AlertCircle, ChevronLeft, ChevronRight, Eye, ShieldAlert, ArrowUpDown, Camera } from 'lucide-react';
+import { Search, Filter, AlertCircle, ChevronLeft, ChevronRight, Eye, ShieldAlert, ArrowUpDown, Camera, X, CheckSquare, Sparkles } from 'lucide-react';
 import { WorkDetailModal } from './WorkDetailModal';
 import { CitizenEvidenceModal } from './CitizenEvidenceModal';
 
-export const WorksTable: React.FC = () => {
+interface WorksTableProps {
+  initialVerificationQueue?: boolean;
+  initialRiskLevel?: string;
+}
+
+export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue, initialRiskLevel }) => {
   const [works, setWorks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -12,11 +17,26 @@ export const WorksTable: React.FC = () => {
   const [totalRecords, setTotalRecords] = useState(0);
   
   // Filters
-  const [riskLevel, setRiskLevel] = useState<string>('');
+  const [riskLevel, setRiskLevel] = useState<string>(initialRiskLevel || '');
   const [sector, setSector] = useState<string>('');
   const [search, setSearch] = useState<string>('');
+  const [verificationQueue, setVerificationQueue] = useState<boolean>(Boolean(initialVerificationQueue));
   const [sortBy, setSortBy] = useState<string>('composite_risk_score');
   const [sortOrder, setSortOrder] = useState<string>('desc');
+
+  useEffect(() => {
+    if (initialVerificationQueue !== undefined) {
+      setVerificationQueue(initialVerificationQueue);
+      setPage(1);
+    }
+  }, [initialVerificationQueue]);
+
+  useEffect(() => {
+    if (initialRiskLevel !== undefined) {
+      setRiskLevel(initialRiskLevel);
+      setPage(1);
+    }
+  }, [initialRiskLevel]);
 
   // Selected work for modal
   const [selectedWork, setSelectedWork] = useState<any | null>(null);
@@ -32,6 +52,7 @@ export const WorksTable: React.FC = () => {
           risk_level: riskLevel || undefined,
           sector: sector || undefined,
           search: search || undefined,
+          verification_queue: verificationQueue || undefined,
           sort_by: sortBy,
           sort_order: sortOrder
         }
@@ -48,7 +69,7 @@ export const WorksTable: React.FC = () => {
 
   useEffect(() => {
     fetchWorks();
-  }, [page, riskLevel, sector, sortBy, sortOrder]);
+  }, [page, riskLevel, sector, verificationQueue, sortBy, sortOrder]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,10 +109,24 @@ export const WorksTable: React.FC = () => {
       <div className="p-4 border-b border-slate-200 bg-slate-50/50">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <h3 className="font-bold text-base text-slate-900 flex items-center">
-              <ShieldAlert className="w-4 h-4 text-emerald-600 mr-2" />
-              MPLADS Works Risk Inspector
-            </h3>
+            <div className="flex items-center space-x-2">
+              <h3 className="font-bold text-base text-slate-900 flex items-center">
+                <ShieldAlert className="w-4 h-4 text-emerald-600 mr-2" />
+                MPLADS Works Risk Inspector
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('133447');
+                  setPage(1);
+                }}
+                className="hidden sm:inline-flex items-center space-x-1 text-[11px] bg-emerald-100 hover:bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full font-bold border border-emerald-300 transition"
+                title="Jump directly to Flagship Road Construction Demo with 12% execution gap"
+              >
+                <Sparkles className="w-3 h-3 text-emerald-700" />
+                <span>Explore Flagship Demo (Road Work)</span>
+              </button>
+            </div>
             <p className="text-xs text-slate-500 mt-0.5">
               Showing {totalRecords.toLocaleString()} audited infrastructure works ranked by multi-signal risk severity
             </p>
@@ -99,6 +134,23 @@ export const WorksTable: React.FC = () => {
 
           {/* Search bar & filter dropdowns */}
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={() => {
+                setVerificationQueue(!verificationQueue);
+                setPage(1);
+              }}
+              className={`text-xs py-1.5 px-3 rounded-lg font-bold transition flex items-center space-x-1.5 border ${
+                verificationQueue
+                  ? 'bg-amber-600 text-white border-amber-700 shadow-sm ring-2 ring-amber-400/40'
+                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+              }`}
+            >
+              <AlertCircle className={`w-3.5 h-3.5 ${verificationQueue ? 'text-white' : 'text-amber-600'}`} />
+              <span>Verification Queue</span>
+              {verificationQueue && <span className="ml-1 text-[10px] bg-white/20 px-1.5 py-0.2 rounded-full">ACTIVE</span>}
+            </button>
+
             <form onSubmit={handleSearchSubmit} className="relative flex-1 md:w-64">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
@@ -136,6 +188,62 @@ export const WorksTable: React.FC = () => {
             </select>
           </div>
         </div>
+
+        {/* Active Filter Chips & Quick Reset (Requirement 14) */}
+        {(riskLevel || sector || search || verificationQueue) && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-2.5 border-t border-slate-200/80 text-[11px]">
+            <span className="text-slate-400 font-medium mr-1">Active Filters:</span>
+
+            {verificationQueue && (
+              <span className="inline-flex items-center bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-semibold border border-amber-300">
+                Verification Queue
+                <button onClick={() => { setVerificationQueue(false); setPage(1); }} className="ml-1 hover:text-red-700">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {riskLevel && (
+              <span className="inline-flex items-center bg-red-100 text-red-900 px-2 py-0.5 rounded-md font-semibold border border-red-300">
+                Risk: {riskLevel}
+                <button onClick={() => { setRiskLevel(''); setPage(1); }} className="ml-1 hover:text-red-700">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {sector && (
+              <span className="inline-flex items-center bg-blue-100 text-blue-900 px-2 py-0.5 rounded-md font-semibold border border-blue-300">
+                Sector: {sector}
+                <button onClick={() => { setSector(''); setPage(1); }} className="ml-1 hover:text-blue-700">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            {search && (
+              <span className="inline-flex items-center bg-slate-200 text-slate-800 px-2 py-0.5 rounded-md font-medium border border-slate-300">
+                "{search}"
+                <button onClick={() => { setSearch(''); setPage(1); }} className="ml-1 hover:text-slate-900">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+
+            <button
+              onClick={() => {
+                setRiskLevel('');
+                setSector('');
+                setSearch('');
+                setVerificationQueue(false);
+                setPage(1);
+              }}
+              className="ml-auto text-xs text-slate-500 hover:text-red-600 font-semibold underline"
+            >
+              Clear All Filters
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Table Content */}
@@ -144,13 +252,17 @@ export const WorksTable: React.FC = () => {
           <thead className="bg-slate-100/70 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200">
             <tr>
               <th className="px-4 py-3">Work ID & Description</th>
-              <th className="px-4 py-3">Location (State/District)</th>
+              <th className="px-4 py-3">Location</th>
               <th className="px-4 py-3">Sector</th>
-              <th className="px-4 py-3 text-right">Sanctioned (₹)</th>
-              <th className="px-4 py-3 text-right">Expended (₹)</th>
-              <th className="px-4 py-3 text-center">Status / Progress</th>
-              <th className="px-4 py-3 text-center">Risk Tier</th>
-              <th className="px-4 py-3 text-center">Audit</th>
+              <th className="px-4 py-3 text-right">Sanctioned</th>
+              <th className="px-4 py-3 text-right">Expended</th>
+              <th className="px-4 py-3 text-center" title="Self-reported completion pace from nodal portal records">
+                Reported Progress
+              </th>
+              <th className="px-4 py-3 text-center" title="Empirical composite risk score (0-100) based on fiscal and execution signals">
+                Risk Priority
+              </th>
+              <th className="px-4 py-3 text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

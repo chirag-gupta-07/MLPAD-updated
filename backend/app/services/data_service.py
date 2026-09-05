@@ -46,11 +46,21 @@ def get_works_paginated(
     state: Optional[str] = None,
     sector: Optional[str] = None,
     search: Optional[str] = None,
+    verification_queue: bool = False,
     sort_by: str = "composite_risk_score",
     sort_order: str = "desc"
 ) -> Dict[str, Any]:
     df = get_dataframe().copy()
     
+    # Verification Queue filter: works that have high risk or premature advance or high delay or seeded in lifecycle
+    if verification_queue:
+        df = df[
+            (df["risk_level"] == "HIGH") | 
+            (df["composite_risk_score"] >= 45.0) |
+            (df["utilization_anomaly_score"] >= 50.0) |
+            (df["delay_risk_score"] >= 65.0)
+        ]
+
     # Filtering
     if risk_level and risk_level.upper() in ["HIGH", "MEDIUM", "LOW"]:
         df = df[df["risk_level"] == risk_level.upper()]
@@ -142,11 +152,19 @@ def get_risk_summary() -> Dict[str, Any]:
         total_sanctioned=("sanctioned_amount", "sum")
     ).reset_index().sort_values("high_risk_count", ascending=False).to_dict(orient="records")
     
+    # Operational priority counts for top KPI hierarchy
+    verification_req_count = int(((df["risk_level"] == "HIGH") | (df["composite_risk_score"] >= 45.0) | (df["utilization_anomaly_score"] >= 50.0)).sum())
+    delayed_count = int((df["delay_risk_score"] >= 65.0).sum())
+    advance_breach_count = int((df["utilization_anomaly_score"] >= 60.0).sum())
+
     return {
         "total_works": total_works,
         "total_sanctioned_crore": round(total_sanctioned / 1e7, 2),
         "total_expenditure_crore": round(total_expenditure / 1e7, 2),
         "overall_utilization_rate": round((total_expenditure / total_sanctioned * 100), 1) if total_sanctioned > 0 else 0.0,
+        "verification_required_count": verification_req_count,
+        "delayed_works_count": delayed_count,
+        "advance_breach_count": advance_breach_count,
         "risk_breakdown": {
             "high_risk_count": int(risk_counts.get("HIGH", 0)),
             "high_risk_percentage": round(int(risk_counts.get("HIGH", 0)) / total_works * 100, 1),

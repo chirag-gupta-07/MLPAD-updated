@@ -13,7 +13,9 @@ from backend.app.api.map import router as map_router
 from backend.app.api.upload import router as upload_router
 from backend.app.api.assistant import router as assistant_router
 from backend.app.api.citizen_evidence import router as citizen_evidence_router
+from backend.app.api.lifecycle import router as lifecycle_router
 from backend.app.services.citizen_evidence_service import seed_demo_citizen_evidence
+from backend.app.db.seed_scenarios import seed_demo_scenarios
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
@@ -24,8 +26,9 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Seed initial demo evidence if DB empty
+    # Startup: Seed initial demo evidence & lifecycle scenarios if DB empty
     seed_demo_citizen_evidence()
+    seed_demo_scenarios()
     yield
     # Shutdown logic if any
 
@@ -57,6 +60,7 @@ app.include_router(map_router)
 app.include_router(upload_router)
 app.include_router(assistant_router)
 app.include_router(citizen_evidence_router)
+app.include_router(lifecycle_router)
 
 
 @app.get("/")

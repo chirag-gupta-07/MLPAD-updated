@@ -13,6 +13,7 @@ def list_works(
     state: Optional[str] = Query(None, description="Filter by state"),
     sector: Optional[str] = Query(None, description="Filter by sector"),
     search: Optional[str] = Query(None, description="Search query across ID, description, MP, district"),
+    verification_queue: bool = Query(False, description="Filter for works in the verification queue"),
     sort_by: str = Query("composite_risk_score", description="Column to sort by"),
     sort_order: str = Query("desc", description="Sort order: asc or desc")
 ) -> Dict[str, Any]:
@@ -23,6 +24,7 @@ def list_works(
         state=state,
         sector=sector,
         search=search,
+        verification_queue=verification_queue,
         sort_by=sort_by,
         sort_order=sort_order
     )

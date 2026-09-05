@@ -30,6 +30,22 @@ export const App: React.FC = () => {
     fetchSummary();
   }, []);
 
+  const [tableVerificationQueue, setTableVerificationQueue] = useState(false);
+  const [tableRiskFilter, setTableRiskFilter] = useState('');
+
+  const handleKpiFilterClick = (filterType: string) => {
+    if (filterType === 'VERIFICATION_QUEUE') {
+      setTableVerificationQueue(true);
+      setTableRiskFilter('');
+    } else if (filterType === 'HIGH_RISK') {
+      setTableRiskFilter('HIGH');
+      setTableVerificationQueue(false);
+    } else if (filterType === 'DELAYED') {
+      setTableVerificationQueue(true);
+      setTableRiskFilter('');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       
@@ -46,14 +62,21 @@ export const App: React.FC = () => {
         {/* Tab 1: Executive Overview */}
         {activeTab === 'overview' && (
           <div className="space-y-6 animate-in fade-in duration-150">
-            {/* Top KPI Cards */}
-            <KpiCards data={summary} loading={loading} />
+            {/* Top Operational KPI Hierarchy (Level 1: Critical) */}
+            <KpiCards
+              data={summary}
+              loading={loading}
+              onFilterClick={handleKpiFilterClick}
+            />
 
             {/* Visual Risk Charts */}
             <RiskCharts summary={summary} />
 
-            {/* High-Risk Quick Grid */}
-            <WorksTable />
+            {/* High-Risk Quick Grid with connected active filters */}
+            <WorksTable
+              initialVerificationQueue={tableVerificationQueue}
+              initialRiskLevel={tableRiskFilter}
+            />
           </div>
         )}
 

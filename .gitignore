@@ -71,6 +71,10 @@ data/citizen_evidence/*.db
 data/citizen_evidence/uploads/*
 !data/citizen_evidence/uploads/demo_evidence_*.jpg
 
+# Lifecycle Local DB
+data/lifecycle/*.db
+
+
 # Large Local Raw & Processed Datasets
 data/raw/
 data/processed/*.csv
