@@ -61,3 +61,12 @@
   border-radius: 0.75rem;
   z-index: 10;
 }
+
+/* Hide scrollbar for tabs */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
