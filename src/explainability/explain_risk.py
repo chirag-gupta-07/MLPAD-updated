@@ -19,6 +19,8 @@ import numpy as np
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 
 def generate_work_explanation(row: pd.Series) -> Dict[str, Any]:
     reasons = []
@@ -167,7 +169,7 @@ def add_explanations_to_dataset(evaluated_path: Path, output_final_path: Path) -
     df.to_parquet(output_final_path.with_suffix(".parquet"), index=False)
     df.to_csv(output_final_path.with_suffix(".csv"), index=False)
     
-    backend_db = Path(r"C:\Users\kavit\Installation\SIH 2026\backend\app\db\master_evaluated_works.parquet")
+    backend_db = PROJECT_ROOT / "backend" / "app" / "db" / "master_evaluated_works.parquet"
     df.to_parquet(backend_db, index=False)
     df.to_csv(backend_db.with_suffix(".csv"), index=False)
     
@@ -176,5 +178,5 @@ def add_explanations_to_dataset(evaluated_path: Path, output_final_path: Path) -
 
 
 if __name__ == "__main__":
-    final_file = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\final_evaluated_works.parquet")
+    final_file = PROJECT_ROOT / "data" / "processed" / "final_evaluated_works.parquet"
     add_explanations_to_dataset(final_file, final_file)

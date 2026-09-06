@@ -9,7 +9,8 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
-master_path = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\master_works.parquet")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+master_path = PROJECT_ROOT / "data" / "processed" / "master_works.parquet"
 df = pd.read_parquet(master_path)
 
 audit_rows = []
@@ -55,7 +56,7 @@ audit_rows.append({
 })
 
 audit_df = pd.DataFrame(audit_rows)
-out_path = Path(r"C:\Users\kavit\Installation\SIH 2026\data\interim\duplicate_audit.csv")
+out_path = PROJECT_ROOT / "data" / "interim" / "duplicate_audit.csv"
 out_path.parent.mkdir(parents=True, exist_ok=True)
 audit_df.to_csv(out_path, index=False)
 

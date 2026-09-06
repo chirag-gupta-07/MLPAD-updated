@@ -82,7 +82,8 @@ app.add_middleware(
 )
 
 # Mount static uploads directory for citizen evidence photographs
-uploads_dir = Path(r"C:\Users\kavit\Installation\SIH 2026\data\citizen_evidence\uploads")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+uploads_dir = PROJECT_ROOT / "data" / "citizen_evidence" / "uploads"
 uploads_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads/evidence", StaticFiles(directory=str(uploads_dir)), name="evidence_uploads")
 

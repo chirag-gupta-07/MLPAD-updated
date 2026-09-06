@@ -17,7 +17,8 @@ import numpy as np
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-notebooks_dir = Path(r"C:\Users\kavit\Installation\SIH 2026\notebooks")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+notebooks_dir = PROJECT_ROOT / "notebooks"
 notebooks_dir.mkdir(parents=True, exist_ok=True)
 
 # -------------------------------------------------------------------------

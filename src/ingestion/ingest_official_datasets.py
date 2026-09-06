@@ -24,9 +24,10 @@ from src.preprocessing.clean_data import STATE_NORMALIZATION_MAP, SECTOR_NORMALI
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-RAW_DATA_DIR = Path(r"C:\Users\kavit\Installation\SIH 2026\MPLADs datsets")
-OUTPUT_PARQUET = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\master_works.parquet")
-OUTPUT_CSV = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\master_works.csv")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+RAW_DATA_DIR = PROJECT_ROOT / "MPLADs datsets"
+OUTPUT_PARQUET = PROJECT_ROOT / "data" / "processed" / "master_works.parquet"
+OUTPUT_CSV = PROJECT_ROOT / "data" / "processed" / "master_works.csv"
 
 
 def extract_canonical_work_id(raw_val: Any) -> Tuple[str, str]:

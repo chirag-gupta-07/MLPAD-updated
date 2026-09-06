@@ -11,8 +11,9 @@ from typing import Dict, Any, List, Optional
 import pandas as pd
 import numpy as np
 
-DATA_PATH = Path(r"C:\Users\kavit\Installation\SIH 2026\backend\app\db\master_evaluated_works.parquet")
-FALLBACK_PATH = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\final_evaluated_works.parquet")
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DATA_PATH = PROJECT_ROOT / "backend" / "app" / "db" / "master_evaluated_works.parquet"
+FALLBACK_PATH = PROJECT_ROOT / "data" / "processed" / "final_evaluated_works.parquet"
 
 _cached_df: Optional[pd.DataFrame] = None
 _cached_risk_summary: Optional[Dict[str, Any]] = None
@@ -33,7 +34,7 @@ def get_dataframe() -> pd.DataFrame:
         _cached_df = pd.read_parquet(FALLBACK_PATH)
     else:
         # Fallback to demo
-        demo_path = Path(r"C:\Users\kavit\Installation\SIH 2026\data\demo\mplads_demo_dataset.parquet")
+        demo_path = PROJECT_ROOT / "data" / "demo" / "mplads_demo_dataset.parquet"
         _cached_df = pd.read_parquet(demo_path)
         
     return _cached_df

@@ -9,8 +9,8 @@ End-to-End Master Pipeline Re-run:
 """
 
 import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
 
 import logging
 import pandas as pd
@@ -28,13 +28,13 @@ from backend.app.services.data_service import reload_dataframe
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-raw_csv = Path(r"C:\Users\kavit\Installation\SIH 2026\data\raw\work_register\mplads_works_raw.csv")
-interim_csv = Path(r"C:\Users\kavit\Installation\SIH 2026\data\interim\cleaned_works.csv")
-master_parquet = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\master_works.parquet")
-features_parquet = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\features_master.parquet")
-scored_parquet = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\scored_works.parquet")
-final_parquet = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\final_evaluated_works.parquet")
-models_dir = Path(r"C:\Users\kavit\Installation\SIH 2026\models")
+raw_csv = PROJECT_ROOT / "data" / "raw" / "work_register" / "mplads_works_raw.csv"
+interim_csv = PROJECT_ROOT / "data" / "interim" / "cleaned_works.csv"
+master_parquet = PROJECT_ROOT / "data" / "processed" / "master_works.parquet"
+features_parquet = PROJECT_ROOT / "data" / "processed" / "features_master.parquet"
+scored_parquet = PROJECT_ROOT / "data" / "processed" / "scored_works.parquet"
+final_parquet = PROJECT_ROOT / "data" / "processed" / "final_evaluated_works.parquet"
+models_dir = PROJECT_ROOT / "models"
 
 # Step 1 & 2: Clean
 logger.info("1/6: Cleaning raw dataset...")

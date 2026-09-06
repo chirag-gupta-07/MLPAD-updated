@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
-DB_DIR = Path(r"C:\Users\kavit\Installation\SIH 2026\data\citizen_evidence")
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DB_DIR = PROJECT_ROOT / "data" / "citizen_evidence"
 DB_DIR.mkdir(parents=True, exist_ok=True)
 UPLOADS_DIR = DB_DIR / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)

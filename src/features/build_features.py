@@ -206,6 +206,7 @@ def build_all_features(master_path: Path, output_features_path: Path) -> pd.Data
 
 
 if __name__ == "__main__":
-    master_file = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\master_works.parquet")
-    features_out = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\features_master.parquet")
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    master_file = PROJECT_ROOT / "data" / "processed" / "master_works.parquet"
+    features_out = PROJECT_ROOT / "data" / "processed" / "features_master.parquet"
     build_all_features(master_file, features_out)

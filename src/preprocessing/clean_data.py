@@ -266,8 +266,9 @@ def run_pipeline(input_path: Path, output_interim: Path, output_processed: Path)
 
 
 if __name__ == "__main__":
-    raw_file = Path(r"C:\Users\kavit\Installation\SIH 2026\data\raw\work_register\mplads_works_raw.csv")
-    interim_file = Path(r"C:\Users\kavit\Installation\SIH 2026\data\interim\cleaned_works.csv")
-    processed_file = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\master_works.parquet")
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    raw_file = PROJECT_ROOT / "data" / "raw" / "work_register" / "mplads_works_raw.csv"
+    interim_file = PROJECT_ROOT / "data" / "interim" / "cleaned_works.csv"
+    processed_file = PROJECT_ROOT / "data" / "processed" / "master_works.parquet"
     
     run_pipeline(raw_file, interim_file, processed_file)

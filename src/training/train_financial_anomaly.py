@@ -180,7 +180,8 @@ def run_training_pipeline(features_path: Path, models_dir: Path, output_scored_p
 
 
 if __name__ == "__main__":
-    feat_file = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\features_master.parquet")
-    models_path = Path(r"C:\Users\kavit\Installation\SIH 2026\models")
-    scored_file = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\scored_works.parquet")
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    feat_file = PROJECT_ROOT / "data" / "processed" / "features_master.parquet"
+    models_path = PROJECT_ROOT / "models"
+    scored_file = PROJECT_ROOT / "data" / "processed" / "scored_works.parquet"
     run_training_pipeline(feat_file, models_path, scored_file)

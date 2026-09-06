@@ -154,6 +154,7 @@ def run_duplicate_detection(scored_path: Path, models_dir: Path) -> pd.DataFrame
 
 
 if __name__ == "__main__":
-    scored_file = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\scored_works.parquet")
-    models_path = Path(r"C:\Users\kavit\Installation\SIH 2026\models")
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    scored_file = PROJECT_ROOT / "data" / "processed" / "scored_works.parquet"
+    models_path = PROJECT_ROOT / "models"
     run_duplicate_detection(scored_file, models_path)

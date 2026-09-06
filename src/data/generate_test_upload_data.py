@@ -6,7 +6,8 @@ for the SIH 2026 live demonstration of the Dynamic Data Ingestion & Fallback fea
 import pandas as pd
 from pathlib import Path
 
-out_dir = Path(r"C:\Users\kavit\Installation\SIH 2026\data\demo")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+out_dir = PROJECT_ROOT / "data" / "demo"
 out_dir.mkdir(parents=True, exist_ok=True)
 
 test_works = [

@@ -58,26 +58,31 @@ def run_full_autonomous_sync_pipeline() -> Dict[str, Any]:
     logger.info("🚀 Starting Autonomous Daily Sync Pipeline...")
     
     try:
+        PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
         # Step 1: Ingest Live/Raw Data
         logger.info("1/5: Fetching official data updates...")
-        raw_path = Path(r"C:\Users\kavit\Installation\SIH 2026\data\raw\work_register\mplads_works_raw.csv")
+        raw_path = PROJECT_ROOT / "data" / "raw" / "work_register" / "mplads_works_raw.csv"
         df_raw = pd.read_csv(raw_path)
 
         # Step 2: Clean & Standardize
         logger.info("2/5: Cleaning and reconciling currency/dates...")
         df_clean, metrics = clean_dataframe(df_raw)
-        interim_path = Path(r"C:\Users\kavit\Installation\SIH 2026\data\interim\cleaned_works.parquet")
+        interim_path = PROJECT_ROOT / "data" / "interim" / "cleaned_works.parquet"
+        interim_path.parent.mkdir(parents=True, exist_ok=True)
         df_clean.to_parquet(interim_path, index=False)
 
         # Step 3: Feature Engineering
         logger.info("3/5: Computing 51 engineered risk features...")
-        feat_path = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\features_master.parquet")
+        feat_path = PROJECT_ROOT / "data" / "processed" / "features_master.parquet"
+        feat_path.parent.mkdir(parents=True, exist_ok=True)
         df_feat = build_all_features(interim_path, feat_path)
 
         # Step 4: ML Scoring (Delay + Duplicate + Anomaly)
         logger.info("4/5: Running ML Models and Vector Duplicate Search...")
-        scored_path = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\scored_works.parquet")
-        models_dir = Path(r"C:\Users\kavit\Installation\SIH 2026\models")
+        scored_path = PROJECT_ROOT / "data" / "processed" / "scored_works.parquet"
+        models_dir = PROJECT_ROOT / "models"
+        models_dir.mkdir(parents=True, exist_ok=True)
         
         # Ensure scores exist
         df_feat["financial_anomaly_score"] = np.where(df_feat["cost_deviation"] > 0.20, 85.0, 15.0)
@@ -90,7 +95,7 @@ def run_full_autonomous_sync_pipeline() -> Dict[str, Any]:
 
         # Step 5: Risk Fusion & Explainable AI
         logger.info("5/5: Fusing Multi-Signal Risk Engine & generating XAI audit evidence...")
-        final_path = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\final_evaluated_works.parquet")
+        final_path = PROJECT_ROOT / "data" / "processed" / "final_evaluated_works.parquet"
         run_risk_engine(scored_path, final_path)
         df_final = add_explanations_to_dataset(final_path, final_path)
 

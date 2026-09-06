@@ -18,10 +18,11 @@ from backend.app.services.data_service import reload_dataframe
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/data", tags=["Data Ingestion & Upload"])
 
-UPLOAD_DIR = Path(r"C:\Users\kavit\Installation\SIH 2026\data\raw\work_register\uploads")
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+UPLOAD_DIR = PROJECT_ROOT / "data" / "raw" / "work_register" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-MODELS_DIR = Path(r"C:\Users\kavit\Installation\SIH 2026\models")
-MASTER_EVALUATED_PATH = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\final_evaluated_works.parquet")
+MODELS_DIR = PROJECT_ROOT / "models"
+MASTER_EVALUATED_PATH = PROJECT_ROOT / "data" / "processed" / "final_evaluated_works.parquet"
 
 
 @router.post("/upload")
@@ -41,11 +42,13 @@ async def upload_mplads_file(file: UploadFile = File(...)) -> Dict[str, Any]:
         
         # 2. Clean
         df_clean, metrics = clean_dataframe(df_raw)
-        temp_cleaned = Path(r"C:\Users\kavit\Installation\SIH 2026\data\interim\temp_uploaded_cleaned.parquet")
+        temp_cleaned = PROJECT_ROOT / "data" / "interim" / "temp_uploaded_cleaned.parquet"
+        temp_cleaned.parent.mkdir(parents=True, exist_ok=True)
         df_clean.to_parquet(temp_cleaned, index=False)
         
         # 3. Features
-        temp_features = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\temp_features.parquet")
+        temp_features = PROJECT_ROOT / "data" / "processed" / "temp_features.parquet"
+        temp_features.parent.mkdir(parents=True, exist_ok=True)
         df_feat = build_all_features(temp_cleaned, temp_features)
         
         # 4. Score with ML / Anomaly Models

@@ -17,6 +17,8 @@ import numpy as np
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 WEIGHTS = {
     "financial": 0.30,
     "delay": 0.25,
@@ -112,7 +114,7 @@ def run_risk_engine(scored_path: Path, output_final_path: Path) -> pd.DataFrame:
     df_fused.to_parquet(output_final_path.with_suffix(".parquet"), index=False)
     df_fused.to_csv(output_final_path.with_suffix(".csv"), index=False)
     
-    backend_db_path = Path(r"C:\Users\kavit\Installation\SIH 2026\backend\app\db\master_evaluated_works.parquet")
+    backend_db_path = PROJECT_ROOT / "backend" / "app" / "db" / "master_evaluated_works.parquet"
     backend_db_path.parent.mkdir(parents=True, exist_ok=True)
     df_fused.to_parquet(backend_db_path, index=False)
     df_fused.to_csv(backend_db_path.with_suffix(".csv"), index=False)
@@ -123,6 +125,6 @@ def run_risk_engine(scored_path: Path, output_final_path: Path) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    input_file = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\scored_works.parquet")
-    final_file = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\final_evaluated_works.parquet")
+    input_file = PROJECT_ROOT / "data" / "processed" / "scored_works.parquet"
+    final_file = PROJECT_ROOT / "data" / "processed" / "final_evaluated_works.parquet"
     run_risk_engine(input_file, final_file)

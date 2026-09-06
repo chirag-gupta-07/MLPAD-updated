@@ -185,6 +185,7 @@ def run_delay_training(scored_path: Path, models_dir: Path) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    features_file = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\features_master.parquet")
-    models_path = Path(r"C:\Users\kavit\Installation\SIH 2026\models")
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    features_file = PROJECT_ROOT / "data" / "processed" / "features_master.parquet"
+    models_path = PROJECT_ROOT / "models"
     run_delay_training(features_file, models_path)

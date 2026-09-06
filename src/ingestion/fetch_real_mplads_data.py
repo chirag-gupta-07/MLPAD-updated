@@ -54,7 +54,8 @@ def post_json(endpoint: str, payload: Any, timeout: int = 25) -> Optional[Any]:
 
 
 def fetch_official_data():
-    raw_dir = Path(r"C:\Users\kavit\Installation\SIH 2026\data\raw\work_register")
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    raw_dir = PROJECT_ROOT / "data" / "raw" / "work_register"
     raw_dir.mkdir(parents=True, exist_ok=True)
     
     logger.info("1. Fetching State & UT Master from e-SAKSHI portal...")

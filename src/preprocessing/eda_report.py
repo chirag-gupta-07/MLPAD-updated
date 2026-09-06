@@ -103,6 +103,7 @@ def run_eda(master_path: Path, output_report_path: Path) -> str:
     return report_text
 
 if __name__ == "__main__":
-    master_file = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\master_works.parquet")
-    eda_out = Path(r"C:\Users\kavit\Installation\SIH 2026\data\processed\EDA_REPORT.md")
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    master_file = PROJECT_ROOT / "data" / "processed" / "master_works.parquet"
+    eda_out = PROJECT_ROOT / "data" / "processed" / "EDA_REPORT.md"
     run_eda(master_file, eda_out)

@@ -669,12 +669,13 @@ def create_dataset(total_records: int = 1500) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
     df = create_dataset(total_records=1500)
     
     # Save to data/raw/work_register, data/demo, and data/synthetic
-    out_raw = Path(r"C:\Users\kavit\Installation\SIH 2026\data\raw\work_register\mplads_works_raw.csv")
-    out_demo = Path(r"C:\Users\kavit\Installation\SIH 2026\data\demo\mplads_demo_dataset.csv")
-    out_parquet = Path(r"C:\Users\kavit\Installation\SIH 2026\data\demo\mplads_demo_dataset.parquet")
+    out_raw = PROJECT_ROOT / "data" / "raw" / "work_register" / "mplads_works_raw.csv"
+    out_demo = PROJECT_ROOT / "data" / "demo" / "mplads_demo_dataset.csv"
+    out_parquet = PROJECT_ROOT / "data" / "demo" / "mplads_demo_dataset.parquet"
     
     out_raw.parent.mkdir(parents=True, exist_ok=True)
     out_demo.parent.mkdir(parents=True, exist_ok=True)
