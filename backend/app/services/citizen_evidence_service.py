@@ -204,9 +204,12 @@ def seed_demo_citizen_evidence(force: bool = False):
         return
 
     # Select high-risk and medium-risk works for compelling demo signals
-    high_works = df[df["risk_level"] == "HIGH"].head(3)
-    med_works = df[df["risk_level"] == "MEDIUM"].head(2)
-    selected_works = pd.concat([high_works, med_works]) if len(high_works) > 0 else df.head(5)
+    if "risk_level" in df.columns:
+        high_works = df[df["risk_level"] == "HIGH"].head(3)
+        med_works = df[df["risk_level"] == "MEDIUM"].head(2)
+        selected_works = pd.concat([high_works, med_works]) if len(high_works) > 0 else df.head(5)
+    else:
+        selected_works = df.head(5)
 
     sample_reports = [
         {
