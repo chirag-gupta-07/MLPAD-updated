@@ -184,9 +184,13 @@ def init_and_seed_database():
         tender_count = db.query(Tender).count()
         if tender_count == 0:
             logger.info("Seeding initial active tenders and competitive bids...")
+            sample_works = db.query(Work).limit(2).all()
+            w1_id = sample_works[0].work_id if len(sample_works) > 0 else None
+            w2_id = sample_works[1].work_id if len(sample_works) > 1 else None
+
             t1 = Tender(
                 id="NIT/2026/UP/VAR/0042",
-                work_id="UP_VAR_0042",
+                work_id=w1_id,
                 title="Construction of 500m Concrete Link Road and Culvert in Basantpur",
                 description="Civil road construction connecting Basantpur village to State Highway with RCC culvert and drainage.",
                 department="Public Works Department (PWD)",
@@ -203,7 +207,7 @@ def init_and_seed_database():
             )
             t2 = Tender(
                 id="NIT/2026/UP/VAR/0089",
-                work_id="UP_VAR_0089",
+                work_id=w2_id,
                 title="Installation of 40 Integrated Solar High-Mast Streetlights in Rohania Block",
                 description="Procurement, civil foundation, and installation of solar LED illumination systems with 5-year warranty.",
                 department="Renewable Energy Development Agency (UPNEDA)",
@@ -220,6 +224,7 @@ def init_and_seed_database():
             )
             db.add_all([t1, t2])
             db.commit()
+
 
             # Seed 3 Competitive Bids for Tender 1 to demonstrate AI L1 Ranking
             b1 = Bid(
