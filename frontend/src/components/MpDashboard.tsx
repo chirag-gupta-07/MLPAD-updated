@@ -20,32 +20,35 @@ export const MpDashboard: React.FC = () => {
     constituency: 'Varanasi Lok Sabha'
   });
 
-  const [recommendedWorks, setRecommendedWorks] = useState<any[]>([
-    {
-      id: 'MPLADS/REC/VAR/2026/0491',
-      title: 'Solar High-Mast Illumination in Rohania Bazaar',
-      cost: 1800000,
-      sector: 'Renewable Energy',
-      status: 'SANCTIONED',
-      stage: 'Tender Issued by District Collector'
-    },
-    {
-      id: 'MPLADS/REC/VAR/2026/0812',
-      title: 'Concrete Link Road Connecting Basantpur Village',
-      cost: 2500000,
-      sector: 'Roads & Pathways',
-      status: 'SANCTIONED',
-      stage: 'Tender Awarded (Work Order Issued)'
-    },
-    {
-      id: 'MPLADS/REC/VAR/2026/0994',
-      title: 'Renovation of Primary Health Sub-Center in Sewapuri',
-      cost: 1200000,
-      sector: 'Healthcare & Public Health',
-      status: 'UNDER_REVIEW',
-      stage: 'Technical Feasibility Review by DC'
+  const [recommendedWorks, setRecommendedWorks] = useState<any[]>([]);
+  const [loadingProposals, setLoadingProposals] = useState(false);
+
+  const fetchProposals = async () => {
+    setLoadingProposals(true);
+    try {
+      const token = localStorage.getItem('mplads_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.get('/api/works/mp-proposals', { headers });
+      if (Array.isArray(res.data)) {
+        setRecommendedWorks(res.data);
+      }
+    } catch (e) {
+      console.error('Failed to load MP proposals:', e);
+    } finally {
+      setLoadingProposals(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    fetchProposals();
+  }, []);
+
+  const totalRecommended = recommendedWorks.reduce((acc, curr) => acc + (curr.cost || 0), 0);
+  const totalSanctioned = recommendedWorks
+    .filter(w => ['SANCTIONED', 'TENDER_PUBLISHED', 'EVALUATING', 'AWARDED', 'IN_PROGRESS', 'COMPLETED'].includes(w.status))
+    .reduce((acc, curr) => acc + (curr.cost || 0), 0);
+  const annualAllocation = 50000000; // ₹5.00 Crore statutory
+  const unspentPurse = Math.max(0, annualAllocation - totalRecommended);
 
   const handleRecommend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,17 +58,7 @@ export const MpDashboard: React.FC = () => {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await axios.post('/api/works/recommend', formData, { headers });
       setSuccessMsg(res.data.message);
-      setRecommendedWorks([
-        {
-          id: res.data.work_id,
-          title: formData.title,
-          cost: formData.estimated_cost,
-          sector: formData.sector,
-          status: 'UNDER_REVIEW',
-          stage: 'Submitted to District Collector'
-        },
-        ...recommendedWorks
-      ]);
+      fetchProposals();
       setTimeout(() => {
         setShowModal(false);
         setSuccessMsg(null);
@@ -126,15 +119,17 @@ export const MpDashboard: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Total Recommended</span>
           <div className="flex items-baseline space-x-2 mt-1">
-            <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">₹3.40 Cr</span>
+            <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{formatLakhs(totalRecommended)}</span>
           </div>
-          <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-2 block">68% of Total Quota</span>
+          <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-2 block">
+            {((totalRecommended / annualAllocation) * 100).toFixed(1)}% of Total Quota
+          </span>
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm">
           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Sanctioned by Collector</span>
           <div className="flex items-baseline space-x-2 mt-1">
-            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">₹2.80 Cr</span>
+            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{formatLakhs(totalSanctioned)}</span>
           </div>
           <span className="text-[11px] text-slate-500 mt-2 block">Tenders Issued & Ground Execution</span>
         </div>
@@ -142,7 +137,7 @@ export const MpDashboard: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 rounded-xl p-5 border border-amber-200 dark:border-amber-900/60 bg-amber-50/30 dark:bg-amber-950/20 shadow-sm">
           <span className="text-xs text-amber-800 dark:text-amber-400 font-bold">Unspent Purse Balance</span>
           <div className="flex items-baseline space-x-2 mt-1">
-            <span className="text-2xl font-black text-amber-700 dark:text-amber-300">₹1.60 Cr</span>
+            <span className="text-2xl font-black text-amber-700 dark:text-amber-300">{formatLakhs(unspentPurse)}</span>
           </div>
           <span className="text-[11px] text-amber-800 dark:text-amber-400 mt-2 block">Available for New Recommendations</span>
         </div>
@@ -155,7 +150,10 @@ export const MpDashboard: React.FC = () => {
             <h3 className="font-bold text-sm text-slate-900 dark:text-white">Constituency Work Recommendations</h3>
             <p className="text-xs text-slate-500">Official proposals submitted to District Magistrate & Nodal Officer</p>
           </div>
-          <span className="text-xs font-semibold text-slate-500">{recommendedWorks.length} Proposals Logged</span>
+          <div className="flex items-center space-x-2">
+            {loadingProposals && <span className="text-xs text-amber-500 animate-pulse">Refreshing...</span>}
+            <span className="text-xs font-semibold text-slate-500">{recommendedWorks.length} Proposals Logged</span>
+          </div>
         </div>
 
         <table className="w-full text-left border-collapse text-xs">
@@ -185,7 +183,13 @@ export const MpDashboard: React.FC = () => {
                 <td className="p-3">
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                     rw.status === 'SANCTIONED'
+                      ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                      : rw.status === 'IN_PROGRESS'
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                      : rw.status === 'COMPLETED'
                       ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                      : rw.status === 'TENDER_PUBLISHED'
+                      ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300'
                       : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                   }`}>
                     {rw.status}

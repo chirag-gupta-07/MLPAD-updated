@@ -51,26 +51,83 @@ def _ensure_dataframe_schema(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _get_dynamic_db_works() -> List[Dict[str, Any]]:
+    """Fetches newly recommended, sanctioned, tendered, or modified works from SQLAlchemy database."""
+    try:
+        from backend.app.db.database import SessionLocal
+        from backend.app.db.models import Work, WorkOrder
+        with SessionLocal() as db:
+            wo_wids = [r[0] for r in db.query(WorkOrder.work_id).all() if r[0]]
+            works = db.query(Work).filter(
+                (Work.work_id.like("MPLADS/REC/%")) |
+                (Work.work_id.like("WORK-%")) |
+                (Work.work_id.in_(wo_wids)) |
+                (Work.status.in_(["RECOMMENDED", "TENDER_PUBLISHED", "EVALUATING", "AWARDED"]))
+            ).order_by(Work.work_id.desc()).all()
+
+            results = []
+            for w in works:
+                results.append({
+                    "work_id": str(w.work_id),
+                    "work_description": w.work_description or "",
+                    "state": w.state or "Uttar Pradesh",
+                    "district": w.district or "Varanasi",
+                    "constituency": w.constituency or "Varanasi Lok Sabha",
+                    "mp_name": w.mp_name or "Hon'ble MP",
+                    "sector": w.sector or "Roads & Pathways",
+                    "category": w.category or "Infrastructure",
+                    "sanctioned_amount": float(w.sanctioned_amount or 0.0),
+                    "total_expenditure": float(w.total_expenditure or 0.0),
+                    "completion_percentage": float(w.completion_percentage or 0.0),
+                    "sanction_date": w.sanction_date or "",
+                    "status": w.status or "IN_PROGRESS",
+                    "implementing_agency": w.implementing_agency or "Awaiting Tender Allocation",
+                    "composite_risk_score": float(w.composite_risk_score or 15.0),
+                    "risk_level": w.risk_level or "LOW",
+                    "delay_risk_score": float(w.delay_risk_score or 10.0),
+                    "financial_anomaly_score": float(w.financial_anomaly_score or 10.0),
+                    "utilization_anomaly_score": float(w.utilization_anomaly_score or 10.0),
+                    "duplicate_risk_score": float(w.duplicate_risk_score or 10.0),
+                    "latitude": float(w.latitude or 25.3176),
+                    "longitude": float(w.longitude or 82.9739)
+                })
+            return results
+    except Exception as e:
+        return []
+
+
 def get_dataframe() -> pd.DataFrame:
     global _cached_df
     if _cached_df is not None:
         return _cached_df
         
     if DATA_PATH.exists():
-        _cached_df = pd.read_parquet(DATA_PATH)
+        df_base = pd.read_parquet(DATA_PATH)
     elif FALLBACK_PATH.exists():
-        _cached_df = pd.read_parquet(FALLBACK_PATH)
+        df_base = pd.read_parquet(FALLBACK_PATH)
     else:
         # Fallback to demo
         demo_path = PROJECT_ROOT / "data" / "demo" / "mplads_demo_dataset.parquet"
-        _cached_df = pd.read_parquet(demo_path)
+        df_base = pd.read_parquet(demo_path)
         
-    _cached_df = _ensure_dataframe_schema(_cached_df)
+    df_base = _ensure_dataframe_schema(df_base)
+
+    # Prepend dynamic works from DB so newly proposed/sanctioned/awarded works appear at the top
+    dyn = _get_dynamic_db_works()
+    if dyn:
+        df_dyn = pd.DataFrame(dyn)
+        df_dyn = _ensure_dataframe_schema(df_dyn)
+        dyn_ids = set(df_dyn["work_id"].unique())
+        df_base = df_base[~df_base["work_id"].isin(dyn_ids)]
+        _cached_df = pd.concat([df_dyn, df_base], ignore_index=True)
+    else:
+        _cached_df = df_base
+
     return _cached_df
 
 
-
-def reload_dataframe() -> pd.DataFrame:
+def invalidate_cache():
+    """Invalidates in-memory caches when any work, tender, or approval changes status."""
     global _cached_df, _cached_risk_summary, _default_map_markers
     global _work_id_to_idx, _work_records_cache, _spatial_index
     _cached_df = None
@@ -79,6 +136,10 @@ def reload_dataframe() -> pd.DataFrame:
     _work_id_to_idx = None
     _work_records_cache.clear()
     _spatial_index = None
+
+
+def reload_dataframe() -> pd.DataFrame:
+    invalidate_cache()
     return get_dataframe()
 
 
@@ -173,6 +234,44 @@ def get_work_by_id(work_id: str) -> Optional[Dict[str, Any]]:
     work_id_str = str(work_id).strip()
     if work_id_str in _work_records_cache:
         return _work_records_cache[work_id_str]
+
+    # 1. Query live SQLAlchemy database first for newly added or updated works
+    try:
+        from backend.app.db.database import SessionLocal
+        from backend.app.db.models import Work
+        with SessionLocal() as db:
+            w = db.query(Work).filter(Work.work_id == work_id_str).first()
+            if w:
+                res = {
+                    "work_id": str(w.work_id),
+                    "work_description": w.work_description or "",
+                    "state": w.state or "Uttar Pradesh",
+                    "district": w.district or "Varanasi",
+                    "constituency": w.constituency or "Varanasi Lok Sabha",
+                    "mp_name": w.mp_name or "Hon'ble MP",
+                    "sector": w.sector or "Roads & Pathways",
+                    "category": w.category or "Infrastructure",
+                    "sanctioned_amount": float(w.sanctioned_amount or 0.0),
+                    "total_expenditure": float(w.total_expenditure or 0.0),
+                    "completion_percentage": float(w.completion_percentage or 0.0),
+                    "sanction_date": w.sanction_date or "",
+                    "status": w.status or "IN_PROGRESS",
+                    "implementing_agency": w.implementing_agency or "Awaiting Tender Allocation",
+                    "composite_risk_score": float(w.composite_risk_score or 15.0),
+                    "risk_level": w.risk_level or "LOW",
+                    "delay_risk_score": float(w.delay_risk_score or 10.0),
+                    "financial_anomaly_score": float(w.financial_anomaly_score or 10.0),
+                    "utilization_anomaly_score": float(w.utilization_anomaly_score or 10.0),
+                    "duplicate_risk_score": float(w.duplicate_risk_score or 10.0),
+                    "latitude": float(w.latitude or 25.3176),
+                    "longitude": float(w.longitude or 82.9739)
+                }
+                _work_records_cache[work_id_str] = res
+                return res
+    except Exception:
+        pass
+
+    # 2. Fallback to Parquet index
     _ensure_work_index()
     idx = _work_id_to_idx.get(work_id_str)
     if idx is None:

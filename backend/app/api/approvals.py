@@ -68,7 +68,7 @@ async def take_action(
 ) -> Dict[str, Any]:
     """Take approval action."""
     try:
-        return take_approval_action(
+        action_res = take_approval_action(
             approval_id=approval_id,
             user_name=user_name,
             user_role=user_role,
@@ -76,6 +76,32 @@ async def take_action(
             new_status=new_status,
             remarks=remarks
         )
+
+        # Synchronize Work record in database
+        try:
+            from datetime import datetime
+            from backend.app.db.database import SessionLocal
+            from backend.app.db.models import Work
+            from backend.app.db.operations_db import get_approval_by_id
+            
+            app_item = get_approval_by_id(approval_id)
+            if app_item and app_item.get("project_id"):
+                proj_id = app_item["project_id"]
+                with SessionLocal() as db:
+                    work = db.query(Work).filter(Work.work_id == proj_id).first()
+                    if work:
+                        work.status = new_status
+                        if new_status in ("SANCTIONED", "APPROVED"):
+                            work.sanction_date = datetime.utcnow().strftime("%Y-%m-%d")
+                        db.commit()
+        except Exception as e:
+            print(f"Warning: could not sync approval to Work model: {e}")
+
+        # Invalidate data service cache
+        from backend.app.services.data_service import invalidate_cache
+        invalidate_cache()
+
+        return action_res
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

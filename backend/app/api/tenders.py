@@ -99,6 +99,40 @@ def list_tenders(
     return results
 
 
+@router.get("/eligible-works")
+def get_eligible_works(db: Session = Depends(get_db)):
+    """Returns sanctioned MP works ready for Notice Inviting Tender (NIT) publishing."""
+    # 1. Prioritize works recommended by MP
+    rec_works = db.query(Work).filter(
+        Work.work_id.like("MPLADS/REC/%")
+    ).order_by(Work.work_id.desc()).all()
+
+    # 2. Fetch other sanctioned works
+    other_works = db.query(Work).filter(
+        Work.status == "SANCTIONED",
+        ~Work.work_id.like("MPLADS/REC/%")
+    ).limit(30).all()
+
+    existing_tender_wids = {t.work_id for t in db.query(Tender.work_id).filter(Tender.work_id.isnot(None)).all()}
+
+    combined = rec_works + other_works
+    results = []
+    for w in combined:
+        if w.work_id not in existing_tender_wids or w.status in ("SANCTIONED", "RECOMMENDED"):
+            title = w.work_description.split(":")[0] if ":" in (w.work_description or "") else (w.work_description or "MPLADS Project")
+            results.append({
+                "work_id": w.work_id,
+                "title": title,
+                "sector": w.sector,
+                "district": w.district,
+                "state": w.state,
+                "constituency": w.constituency,
+                "estimated_cost": w.sanctioned_amount,
+                "status": w.status
+            })
+    return results
+
+
 @router.post("/create")
 def create_tender(
     req: CreateTenderRequest,
@@ -133,8 +167,22 @@ def create_tender(
     )
 
     db.add(tender)
+
+    # Link back to Work model if work_id provided
+    if req.work_id:
+        target_work = db.query(Work).filter(Work.work_id == req.work_id).first()
+        if target_work:
+            target_work.status = "TENDER_PUBLISHED"
+
     db.commit()
     db.refresh(tender)
+
+    # Invalidate data service cache
+    try:
+        from backend.app.services.data_service import invalidate_cache
+        invalidate_cache()
+    except Exception:
+        pass
 
     return {
         "status": "SUCCESS",
@@ -415,10 +463,11 @@ def _award_tender_helper(tender_id: str, contractor_id: Optional[str], db: Sessi
     work_order_id = f"WO-{tender.district[:3].upper()}-{datetime.utcnow().year}-{uuid.uuid4().hex[:6].upper()}"
     work_ref_id = tender.work_id or f"WORK-{uuid.uuid4().hex[:8].upper()}"
 
+    contractor_profile = db.query(ContractorProfile).filter(ContractorProfile.id == contractor_id).first()
+    firm = contractor_profile.firm_name if contractor_profile else "Awarded Contractor"
+
     work_entry = db.query(Work).filter(Work.work_id == work_ref_id).first()
     if not work_entry:
-        contractor_profile = db.query(ContractorProfile).filter(ContractorProfile.id == contractor_id).first()
-        firm = contractor_profile.firm_name if contractor_profile else "Awarded Contractor"
         work_entry = Work(
             work_id=work_ref_id,
             work_description=tender.title,
@@ -436,6 +485,10 @@ def _award_tender_helper(tender_id: str, contractor_id: Optional[str], db: Sessi
             longitude=82.9739
         )
         db.add(work_entry)
+    else:
+        work_entry.status = "IN_PROGRESS"
+        work_entry.implementing_agency = firm
+        work_entry.sanctioned_amount = awarded_bid.quoted_amount
 
     work_order = WorkOrder(
         id=work_order_id,
@@ -450,6 +503,31 @@ def _award_tender_helper(tender_id: str, contractor_id: Optional[str], db: Sessi
     )
     db.add(work_order)
     db.commit()
+
+    # Automatically register 10% Mobilization Advance in operations.db payments
+    try:
+        from backend.app.db.operations_db import create_payment_request
+        advance_amount = round(awarded_bid.quoted_amount * 0.10, 2)
+        create_payment_request(
+            project_id=work_ref_id,
+            amount=advance_amount,
+            contractor_agency=firm,
+            invoice_reference=f"MOB-ADV-{work_order_id}",
+            category="MOBILIZATION_ADVANCE",
+            milestone_id="M_ADV",
+            requested_by="E-Procurement Engine (Auto)",
+            user_role="System",
+            remarks=f"Automatic statutory 10% mobilization advance for {firm} on Work Order {work_order_id}"
+        )
+    except Exception as e:
+        print(f"Warning: could not register mobilization payment: {e}")
+
+    # Invalidate data service cache
+    try:
+        from backend.app.services.data_service import invalidate_cache
+        invalidate_cache()
+    except Exception:
+        pass
 
     return {
         "status": "SUCCESS",

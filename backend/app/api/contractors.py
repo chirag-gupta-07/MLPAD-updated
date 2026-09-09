@@ -193,22 +193,53 @@ def update_work_order_progress(
     elif new_pct > 0:
         wo.status = "IN_PROGRESS"
 
-    # Also update master work progress
+    # Also update master work progress and expenditure
     if wo.work_id:
         master_work = db.query(Work).filter(Work.work_id == wo.work_id).first()
         if master_work:
             master_work.completion_percentage = new_pct
+            master_work.total_expenditure = round(master_work.sanctioned_amount * (new_pct / 100.0), 2)
+            wo.expenditure_disbursed = master_work.total_expenditure
             if new_pct >= 100.0:
                 master_work.status = "COMPLETED"
+            elif new_pct > 0:
+                master_work.status = "IN_PROGRESS"
+
+            # Generate running bill / milestone payment request in operations.db
+            try:
+                from backend.app.db.operations_db import create_payment_request
+                contractor = db.query(ContractorProfile).filter(ContractorProfile.id == wo.contractor_id).first()
+                firm = contractor.firm_name if contractor else "Contractor"
+                milestone_amt = round(master_work.sanctioned_amount * (new_pct / 100.0), 2)
+                create_payment_request(
+                    project_id=wo.work_id,
+                    amount=milestone_amt,
+                    contractor_agency=firm,
+                    invoice_reference=f"BILL-{wo.id}-P{int(new_pct)}",
+                    category="RUNNING_BILL",
+                    milestone_id=f"MILESTONE_{int(new_pct)}",
+                    requested_by=current_user.full_name or firm,
+                    user_role="Contractor",
+                    remarks=f"Running bill claim for achievement of {new_pct}% physical milestone on Work Order {wo.id}."
+                )
+            except Exception as e:
+                print(f"Warning: could not create milestone payment: {e}")
 
     db.commit()
+
+    # Invalidate data service cache
+    try:
+        from backend.app.services.data_service import invalidate_cache
+        invalidate_cache()
+    except Exception:
+        pass
 
     return {
         "status": "SUCCESS",
         "work_order_id": wo.id,
         "new_progress_pct": wo.current_progress_pct,
         "work_status": wo.status,
-        "message": f"Progress updated to {new_pct}% successfully."
+        "message": f"Progress updated to {new_pct}% successfully. Master monitoring dashboard and running bill synchronized."
     }
 
 

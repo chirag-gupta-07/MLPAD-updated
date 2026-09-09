@@ -42,6 +42,22 @@ export const TenderManagementPage: React.FC = () => {
   const [demoDocs, setDemoDocs] = useState<any[]>([]);
   const [activeBidderForDoc, setActiveBidderForDoc] = useState<any | null>(null);
 
+  // Eligible Sanctioned Works for Tender Publishing
+  const [eligibleWorks, setEligibleWorks] = useState<any[]>([]);
+  const [loadingEligible, setLoadingEligible] = useState(false);
+
+  const fetchEligibleWorks = async () => {
+    setLoadingEligible(true);
+    try {
+      const res = await axios.get('/api/tenders/eligible-works');
+      setEligibleWorks(res.data || []);
+    } catch (e) {
+      console.error('Failed to load eligible works:', e);
+    } finally {
+      setLoadingEligible(false);
+    }
+  };
+
   // New Tender Form State
   const [formData, setFormData] = useState({
     title: '',
@@ -220,7 +236,10 @@ export const TenderManagementPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              fetchEligibleWorks();
+              setShowCreateModal(true);
+            }}
             className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm flex items-center space-x-1.5 transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -518,6 +537,38 @@ export const TenderManagementPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateTender} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 flex justify-between items-center">
+                  <span>Link to Sanctioned MP Work (Optional)</span>
+                  <span className="text-[10px] text-indigo-500 font-semibold">Auto-fills Title & Budget</span>
+                </label>
+                <select
+                  value={formData.work_id}
+                  onChange={(e) => {
+                    const wid = e.target.value;
+                    const selected = eligibleWorks.find((w: any) => w.work_id === wid);
+                    if (selected) {
+                      setFormData({
+                        ...formData,
+                        work_id: wid,
+                        title: `Tender for ${selected.title}`,
+                        estimated_cost: selected.estimated_cost || formData.estimated_cost
+                      });
+                    } else {
+                      setFormData({ ...formData, work_id: wid });
+                    }
+                  }}
+                  className="w-full p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                >
+                  <option value="">-- Custom / Standalone Public Tender --</option>
+                  {eligibleWorks.map((ew: any) => (
+                    <option key={ew.work_id} value={ew.work_id}>
+                      [{ew.status}] {ew.work_id} — {ew.title} (₹{(ew.estimated_cost / 1e5).toFixed(1)}L)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Tender Title / Work Scope</label>
                 <input

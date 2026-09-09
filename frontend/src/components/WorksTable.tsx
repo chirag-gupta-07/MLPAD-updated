@@ -310,10 +310,13 @@ export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue
                   </td>
 
                   <td className="px-4 py-3 text-center whitespace-nowrap">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded block mb-1 max-w-fit mx-auto ${
-                      w.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' :
-                      w.status === 'REPORTED' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
-                      w.status === 'UNDER_REVIEW' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' :
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full block mb-1 max-w-fit mx-auto ${
+                      w.status === 'COMPLETED' || w.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' :
+                      w.status === 'SANCTIONED' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300' :
+                      w.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300' :
+                      w.status === 'TENDER_PUBLISHED' || w.status === 'AWARDED' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300' :
+                      w.status === 'RECOMMENDED' || w.status === 'UNDER_REVIEW' || w.status === 'PROPOSED' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' :
+                      w.status === 'REPORTED' ? 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300' :
                       'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300'
                     }`}>
                       {w.status}

@@ -74,7 +74,7 @@ async def action_on_payment(
 ) -> Dict[str, Any]:
     """Take payment action."""
     try:
-        return take_payment_action(
+        res = take_payment_action(
             payment_id=payment_id,
             user_name=user_name,
             user_role=user_role,
@@ -83,6 +83,35 @@ async def action_on_payment(
             remarks=remarks,
             transaction_reference=transaction_reference
         )
+
+        # Synchronize expenditure with Work and WorkOrder in DB
+        if new_status in ("APPROVED", "DISBURSED", "PAID"):
+            try:
+                from backend.app.db.database import SessionLocal
+                from backend.app.db.models import Work, WorkOrder
+                pay = get_payment_by_id(payment_id)
+                if pay and pay.get("project_id"):
+                    proj_id = pay["project_id"]
+                    pay_amt = float(pay.get("amount", 0))
+                    with SessionLocal() as db:
+                        w = db.query(Work).filter(Work.work_id == proj_id).first()
+                        if w:
+                            w.total_expenditure = round(min(w.sanctioned_amount, (w.total_expenditure or 0) + pay_amt), 2)
+                            db.commit()
+                        wo = db.query(WorkOrder).filter(WorkOrder.work_id == proj_id).first()
+                        if wo:
+                            wo.expenditure_disbursed = round(min(wo.sanctioned_amount, (wo.expenditure_disbursed or 0) + pay_amt), 2)
+                            db.commit()
+            except Exception as err:
+                print(f"Warning: could not sync payment expenditure: {err}")
+
+            try:
+                from backend.app.services.data_service import invalidate_cache
+                invalidate_cache()
+            except Exception:
+                pass
+
+        return res
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
