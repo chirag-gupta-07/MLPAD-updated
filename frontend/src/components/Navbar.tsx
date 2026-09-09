@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ShieldAlert, BarChart3, Map, Bot, Upload, RefreshCw, Camera,
-  Sun, Moon, Monitor, Gavel, Briefcase, UserCheck
+  Sun, Moon, Monitor, Gavel, Briefcase, UserCheck, Landmark, HeartHandshake
 } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 import axios from 'axios';
@@ -9,6 +9,8 @@ import axios from 'axios';
 export type TabType =
   | 'overview'
   | 'works'
+  | 'mp-dashboard'
+  | 'citizen-portal'
   | 'tenders'
   | 'contractor'
   | 'approvals'
@@ -22,26 +24,41 @@ interface NavbarProps {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
   openUploadModal: () => void;
+  onRoleChange?: (role: string, personaKey: string) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUploadModal }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  activeTab,
+  setActiveTab,
+  openUploadModal,
+  onRoleChange
+}) => {
   const { theme, setTheme } = useTheme();
   const [isResetting, setIsResetting] = useState(false);
   const [activePersona, setActivePersona] = useState<string>('admin');
+  const [activeRole, setActiveRole] = useState<string>('SUPER_ADMIN');
   const [switching, setSwitching] = useState(false);
 
-  const tabs: { id: TabType; label: string }[] = [
-    { id: 'overview', label: 'Dashboard' },
-    { id: 'works', label: 'Projects' },
-    { id: 'tenders', label: 'E-Tenders' },
-    { id: 'contractor', label: 'Contractor Portal' },
-    { id: 'approvals', label: 'Approvals' },
-    { id: 'payments', label: 'Payments' },
-    { id: 'public-requests', label: 'Public Requests' },
-    { id: 'gis', label: 'GIS Map' },
-    { id: 'evidence', label: 'Evidence' },
-    { id: 'assistant', label: 'AI Assistant' },
+  // Master list of tabs
+  const allTabs: { id: TabType; label: string; allowedRoles?: string[] }[] = [
+    { id: 'overview', label: 'Dashboard', allowedRoles: ['SUPER_ADMIN', 'DISTRICT_COLLECTOR', 'VIGILANCE'] },
+    { id: 'mp-dashboard', label: 'MP Purse & Actions', allowedRoles: ['SUPER_ADMIN', 'MP'] },
+    { id: 'citizen-portal', label: 'Jan Samwaad', allowedRoles: ['SUPER_ADMIN', 'CITIZEN'] },
+    { id: 'works', label: 'Projects', allowedRoles: ['SUPER_ADMIN', 'DISTRICT_COLLECTOR', 'MP', 'VIGILANCE'] },
+    { id: 'tenders', label: 'E-Tenders', allowedRoles: ['SUPER_ADMIN', 'DISTRICT_COLLECTOR', 'VIGILANCE'] },
+    { id: 'contractor', label: 'Contractor Portal', allowedRoles: ['SUPER_ADMIN', 'CONTRACTOR'] },
+    { id: 'approvals', label: 'Approvals', allowedRoles: ['SUPER_ADMIN', 'DISTRICT_COLLECTOR'] },
+    { id: 'payments', label: 'Payments', allowedRoles: ['SUPER_ADMIN', 'DISTRICT_COLLECTOR'] },
+    { id: 'public-requests', label: 'Public Demands', allowedRoles: ['SUPER_ADMIN', 'MP', 'DISTRICT_COLLECTOR'] },
+    { id: 'gis', label: 'GIS Map', allowedRoles: ['SUPER_ADMIN', 'MP', 'DISTRICT_COLLECTOR', 'CONTRACTOR', 'VIGILANCE', 'CITIZEN'] },
+    { id: 'evidence', label: 'Ground Evidence', allowedRoles: ['SUPER_ADMIN', 'DISTRICT_COLLECTOR', 'VIGILANCE', 'CITIZEN'] },
+    { id: 'assistant', label: 'AI Copilot', allowedRoles: ['SUPER_ADMIN', 'MP', 'DISTRICT_COLLECTOR', 'VIGILANCE'] },
   ];
+
+  // Dynamic filter based on current user's role
+  const visibleTabs = allTabs.filter(
+    (tab) => !tab.allowedRoles || tab.allowedRoles.includes(activeRole)
+  );
 
   const handlePersonaChange = async (personaKey: string) => {
     setActivePersona(personaKey);
@@ -49,15 +66,27 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUpl
     try {
       const res = await axios.post(`/api/auth/switch-persona/${personaKey}`);
       const token = res.data.access_token;
+      const user = res.data.user;
+      
       localStorage.setItem('mplads_token', token);
-      localStorage.setItem('mplads_user', JSON.stringify(res.data.user));
+      localStorage.setItem('mplads_user', JSON.stringify(user));
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-      // Smart tab navigation based on role
+      const role = user.role;
+      setActiveRole(role);
+      if (onRoleChange) onRoleChange(role, personaKey);
+
+      // Smart landing page navigation based on chosen role
       if (personaKey === 'contractor') {
         setActiveTab('contractor');
+      } else if (personaKey === 'mp') {
+        setActiveTab('mp-dashboard');
+      } else if (personaKey === 'citizen') {
+        setActiveTab('citizen-portal');
       } else if (personaKey === 'dno') {
         setActiveTab('tenders');
+      } else {
+        setActiveTab('overview');
       }
     } catch (e) {
       console.error('Failed to switch persona:', e);
@@ -67,7 +96,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUpl
   };
 
   useEffect(() => {
-    // Initialize default admin persona session on first load
     handlePersonaChange('admin');
   }, []);
 
@@ -102,21 +130,21 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUpl
               <div className="flex items-center space-x-2">
                 <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">MLPAD</span>
                 <span className="bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
-                  ENTERPRISE
+                  {activeRole.replace('_', ' ')}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap hidden sm:block">
-                MPLADS Risk Intelligence & E-Procurement
+                MPLADS Governance & Accountability Portal
               </p>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
+          {/* Dynamic Role-Filtered Navigation Tabs */}
           <nav className="flex items-center h-16 overflow-x-auto no-scrollbar space-x-1 xl:space-x-1.5 shrink min-w-0">
-            {tabs.map((tab) => (
+            {visibleTabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`h-full flex items-center px-2.5 xl:px-3 text-xs xl:text-sm font-medium transition-colors border-b-2 whitespace-nowrap shrink-0 ${
                   activeTab === tab.id
                     ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400 font-semibold'
@@ -143,11 +171,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUpl
               </button>
             </div>
 
-            {/* 1-Click Role / Persona Switcher for SIH Presentation */}
+            {/* 1-Click Role Persona Dropdown */}
             <div className="relative flex items-center">
               <div className="flex items-center space-x-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs">
                 <UserCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span className="text-[11px] text-slate-500 hidden md:inline">Role:</span>
+                <span className="text-[11px] text-slate-500 hidden md:inline">Persona:</span>
                 <select
                   value={activePersona}
                   onChange={(e) => handlePersonaChange(e.target.value)}
@@ -175,13 +203,16 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUpl
               <span className="hidden xl:inline">{isResetting ? 'Resetting...' : 'Reset Demo'}</span>
             </button>
 
-            <button
-              onClick={openUploadModal}
-              className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition whitespace-nowrap"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Upload Data</span>
-            </button>
+            {/* Upload Data Button (Admin & DC only) */}
+            {['SUPER_ADMIN', 'DISTRICT_COLLECTOR'].includes(activeRole) && (
+              <button
+                onClick={openUploadModal}
+                className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition whitespace-nowrap"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Upload Data</span>
+              </button>
+            )}
           </div>
 
         </div>

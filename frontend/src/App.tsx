@@ -15,6 +15,9 @@ import { DevelopmentRequestsPage } from './components/DevelopmentRequestsPage';
 import { ProjectDetailPage } from './components/ProjectDetailPage';
 import { TenderManagementPage } from './components/TenderManagementPage';
 import { ContractorPortal } from './components/ContractorPortal';
+import { MpDashboard } from './components/MpDashboard';
+import { CitizenPortal } from './components/CitizenPortal';
+
 
 
 
@@ -108,12 +111,27 @@ export const App: React.FC = () => {
                 </div>
               )}
 
+              {/* MP Constituency Command Tab */}
+              {activeTab === 'mp-dashboard' && (
+                <div className="animate-in fade-in duration-150">
+                  <MpDashboard />
+                </div>
+              )}
+
+              {/* Citizen Transparency & Jan Samwaad Tab */}
+              {activeTab === 'citizen-portal' && (
+                <div className="animate-in fade-in duration-150">
+                  <CitizenPortal />
+                </div>
+              )}
+
               {/* Tenders & Procurement Tab */}
               {activeTab === 'tenders' && (
                 <div className="animate-in fade-in duration-150">
                   <TenderManagementPage />
                 </div>
               )}
+
 
               {/* Contractor Portal Tab */}
               {activeTab === 'contractor' && (
