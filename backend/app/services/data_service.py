@@ -58,10 +58,21 @@ def _get_dynamic_db_works() -> List[Dict[str, Any]]:
         from backend.app.db.models import Work, WorkOrder
         with SessionLocal() as db:
             wo_wids = [r[0] for r in db.query(WorkOrder.work_id).all() if r[0]]
+            
+            # Fetch all project IDs associated with operational payments
+            payment_pids = []
+            try:
+                from backend.app.db.operations_db import get_connection
+                with get_connection() as conn:
+                    payment_pids = [r[0] for r in conn.execute("SELECT DISTINCT project_id FROM payments").fetchall() if r[0]]
+            except Exception:
+                pass
+
             works = db.query(Work).filter(
                 (Work.work_id.like("MPLADS/REC/%")) |
                 (Work.work_id.like("WORK-%")) |
                 (Work.work_id.in_(wo_wids)) |
+                (Work.work_id.in_(payment_pids)) |
                 (Work.status.in_(["RECOMMENDED", "TENDER_PUBLISHED", "EVALUATING", "AWARDED"]))
             ).order_by(Work.work_id.desc()).all()
 
@@ -156,9 +167,38 @@ def get_works_paginated(
 ) -> Dict[str, Any]:
     df = get_dataframe().copy()
     
-    # Verification Queue filter: works that have high risk or premature advance or high delay or seeded in lifecycle
+    # Ensure dynamic MP proposals, tendered works, and projects with active payments are prioritized on Page 1
+    dynamic_work_ids = set()
+    try:
+        from backend.app.db.database import SessionLocal
+        from backend.app.db.models import Work, WorkOrder
+        with SessionLocal() as sdb:
+            dynamic_work_ids.update([r[0] for r in sdb.query(Work.work_id).filter(Work.work_id.like("MPLADS/REC/%")).all()])
+            dynamic_work_ids.update([r[0] for r in sdb.query(WorkOrder.work_id).all() if r[0]])
+        from backend.app.db.operations_db import get_connection
+        with get_connection() as conn:
+            dynamic_work_ids.update([r[0] for r in conn.execute("SELECT DISTINCT project_id FROM payments").fetchall() if r[0]])
+    except Exception:
+        pass
+
+    def _calc_priority(r):
+        wid = str(r.get("work_id", ""))
+        exp = float(r.get("total_expenditure", 0.0) or 0.0)
+        st = str(r.get("status", ""))
+        if wid.startswith("MPLADS/REC/") or wid.startswith("WORK-"):
+            if exp > 0 or st in ("IN_PROGRESS", "COMPLETED"):
+                return 4  # Highest: Live project with approved payments / active ground execution
+            return 3      # High: Live project recommended / sanctioned / tendered
+        if wid in dynamic_work_ids:
+            return 2      # Operational projects with payments or approvals
+        return 0          # Historical background dataset
+
+    df["_priority"] = df.apply(_calc_priority, axis=1)
+
+    # Verification Queue filter: works that have high risk or premature advance or high delay, while keeping active dynamic works visible
     if verification_queue:
         df = df[
+            (df["_priority"] == 1) |
             (df["risk_level"] == "HIGH") | 
             (df["composite_risk_score"] >= 45.0) |
             (df["utilization_anomaly_score"] >= 50.0) |
@@ -186,12 +226,10 @@ def get_works_paginated(
         )
         df = df[mask]
         
-    # Sorting
+    # Sorting: Dynamic active/paid projects always surface on Page 1 first
     ascending = (sort_order.lower() == "asc")
-    if sort_by in df.columns:
-        df = df.sort_values(by=sort_by, ascending=ascending)
-    else:
-        df = df.sort_values(by="composite_risk_score", ascending=False)
+    target_sort_col = sort_by if (sort_by in df.columns) else "composite_risk_score"
+    df = df.sort_values(by=["_priority", target_sort_col], ascending=[False, ascending])
         
     total_count = len(df)
     total_pages = max(1, (total_count + page_size - 1) // page_size)

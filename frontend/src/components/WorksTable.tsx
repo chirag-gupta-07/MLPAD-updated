@@ -138,6 +138,28 @@ export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue
             <button
               type="button"
               onClick={() => {
+                if (search === 'MPLADS/REC') {
+                  setSearch('');
+                } else {
+                  setSearch('MPLADS/REC');
+                  setVerificationQueue(false);
+                }
+                setPage(1);
+              }}
+              className={`text-xs py-1.5 px-3 rounded-lg font-bold transition flex items-center space-x-1.5 border ${
+                search === 'MPLADS/REC'
+                  ? 'bg-purple-600 text-white border-purple-700 shadow-sm ring-2 ring-purple-400/40'
+                  : 'bg-white dark:bg-slate-800 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/60 hover:bg-purple-50 dark:hover:bg-purple-950/40'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+              <span>Live Lifecycle Works</span>
+              {search === 'MPLADS/REC' && <span className="ml-1 text-[10px] bg-white/20 px-1.5 py-0.2 rounded-full">ACTIVE</span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
                 setVerificationQueue(!verificationQueue);
                 setPage(1);
               }}
@@ -284,10 +306,22 @@ export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue
               works.map((w) => (
                 <tr key={w.work_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition">
                   <td className="px-4 py-3 max-w-xs">
-                    <div className="font-bold text-slate-900 dark:text-slate-100 font-mono text-[11px]">{w.work_id}</div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-slate-900 dark:text-slate-100 font-mono text-[11px]">{w.work_id}</span>
+                      {(w.work_id?.startsWith('MPLADS/REC/') || w.work_id?.startsWith('WORK-')) && (
+                        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs">
+                          ⚡ LIVE WORKFLOW
+                        </span>
+                      )}
+                    </div>
                     <div className="text-slate-600 dark:text-slate-400 truncate mt-0.5 text-xs" title={w.work_description}>
                       {w.work_description}
                     </div>
+                    {w.implementing_agency && w.implementing_agency !== 'Awaiting Tender Allocation' && (
+                      <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium truncate mt-0.5">
+                        Agency: {w.implementing_agency}
+                      </div>
+                    )}
                   </td>
 
                   <td className="px-4 py-3 whitespace-nowrap">
@@ -307,6 +341,11 @@ export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue
                     <span className={w.total_expenditure > w.sanctioned_amount ? 'text-red-600 dark:text-red-400 font-bold' : 'text-slate-800 dark:text-slate-200'}>
                       ₹{(w.total_expenditure / 1e5).toFixed(2)} L
                     </span>
+                    {w.total_expenditure > 0 && (
+                      <div className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                        Paid / Disbursed
+                      </div>
+                    )}
                   </td>
 
                   <td className="px-4 py-3 text-center whitespace-nowrap">

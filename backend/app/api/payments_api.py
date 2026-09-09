@@ -85,7 +85,7 @@ async def action_on_payment(
         )
 
         # Synchronize expenditure with Work and WorkOrder in DB
-        if new_status in ("APPROVED", "DISBURSED", "PAID"):
+        if new_status in ("APPROVED", "DISBURSED", "PAID", "RECONCILED"):
             try:
                 from backend.app.db.database import SessionLocal
                 from backend.app.db.models import Work, WorkOrder
@@ -98,6 +98,24 @@ async def action_on_payment(
                         if w:
                             w.total_expenditure = round(min(w.sanctioned_amount, (w.total_expenditure or 0) + pay_amt), 2)
                             db.commit()
+                        else:
+                            # Create work entry if it was an operational historical project
+                            w = Work(
+                                work_id=proj_id,
+                                work_description=pay.get("work_description") or f"Public Work {proj_id}",
+                                state="Uttar Pradesh",
+                                district="Varanasi",
+                                constituency="Varanasi Lok Sabha",
+                                sanctioned_amount=pay_amt * 2,
+                                total_expenditure=pay_amt,
+                                completion_percentage=50.0,
+                                status="IN_PROGRESS",
+                                implementing_agency=pay.get("contractor_agency", "Executing Agency"),
+                                composite_risk_score=15.0,
+                                risk_level="LOW"
+                            )
+                            db.add(w)
+                            db.commit()
                         wo = db.query(WorkOrder).filter(WorkOrder.work_id == proj_id).first()
                         if wo:
                             wo.expenditure_disbursed = round(min(wo.sanctioned_amount, (wo.expenditure_disbursed or 0) + pay_amt), 2)
@@ -105,11 +123,12 @@ async def action_on_payment(
             except Exception as err:
                 print(f"Warning: could not sync payment expenditure: {err}")
 
-            try:
-                from backend.app.services.data_service import invalidate_cache
-                invalidate_cache()
-            except Exception:
-                pass
+        # Always invalidate data service cache on any payment status change
+        try:
+            from backend.app.services.data_service import invalidate_cache
+            invalidate_cache()
+        except Exception:
+            pass
 
         return res
     except ValueError as e:
