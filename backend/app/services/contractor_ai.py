@@ -210,3 +210,119 @@ def verify_photo_exif_geofence(
             "message": f"Could not parse EXIF metadata: {str(e)}",
             "distance_meters": None
         }
+
+
+def verify_technical_bid_pdf(pdf_bytes: bytes, estimated_tender_cost: float = 4500000.0) -> Dict[str, Any]:
+    """
+    AI-powered scrutiny of Envelope-1 Technical Bid PDF using Gemini 3.6 Flash Vision.
+    Validates:
+    - Vendor PAN, GSTIN & State Jurisdiction
+    - Statutory CA Turnover Certificate & ICAI UDIN
+    - Past Experience Completion & GFR 2017 Rule 173(v) 40% threshold
+    - Satisfactory Track Record & Liquidated Damages Check
+    """
+    import os
+    import json
+    from dotenv import load_dotenv
+
+    load_dotenv(".env")
+    gemini_key = os.getenv("GEMINI_API_KEY")
+
+    if not gemini_key:
+        return {
+            "success": False,
+            "verdict": "ERROR",
+            "error": "GEMINI_API_KEY not configured in environment."
+        }
+
+    try:
+        import pypdfium2 as pdfium
+        pdf = pdfium.PdfDocument(pdf_bytes)
+        num_pages = len(pdf)
+        images = [pdf[i].render(scale=1.5).to_pil() for i in range(min(num_pages, 5))]
+    except Exception as e:
+        logger.error(f"Error reading PDF with pypdfium2: {e}")
+        return {
+            "success": False,
+            "verdict": "ERROR",
+            "error": f"Failed to process PDF bytes: {str(e)}"
+        }
+
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=gemini_key)
+        model = genai.GenerativeModel("gemini-3.6-flash")
+    except Exception as e:
+        return {
+            "success": False,
+            "verdict": "ERROR",
+            "error": f"Failed to initialize Gemini model: {str(e)}"
+        }
+
+    min_past_work_40 = estimated_tender_cost * 0.40
+    min_turnover_30 = estimated_tender_cost * 0.30
+
+    prompt = f"""
+You are a senior Government of India Procurement Auditor evaluating an Envelope-1 Technical Bid dossier for an MPLADS Infrastructure Tender.
+Estimated Tender Cost: INR {estimated_tender_cost:,.2f}
+Minimum required single similar work (40% threshold): INR {min_past_work_40:,.2f}
+Minimum annual civil turnover required (30% threshold): INR {min_turnover_30:,.2f}
+
+Inspect the submitted document pages thoroughly.
+Extract the following exact fields into a valid JSON object without markdown formatting:
+{{
+  "vendor_name": "string",
+  "vendor_pan": "string",
+  "vendor_gstin": "string",
+  "pan_valid_format": true,
+  "gstin_valid_format": true,
+  "pan_gstin_matched": true,
+  "gstin_state_code": "string",
+  "ca_firm_name": "string or null",
+  "ca_udin": "string or null",
+  "ca_udin_present": true,
+  "certified_average_turnover": "string or number",
+  "turnover_compliant": true,
+  "past_work_title": "string or null",
+  "past_work_issuing_authority": "string or null",
+  "past_work_value": "string or number",
+  "past_work_nature_similar": true,
+  "past_work_value_compliant": true,
+  "past_work_completion_ontime": true,
+  "litigation_penalty_found": false,
+  "overall_verdict": "QUALIFIED" or "DISQUALIFIED",
+  "score": 88,
+  "audit_summary": "string",
+  "checklist": [
+    {{"item": "Permanent Account Number (PAN) Verification", "passed": true, "note": "..."}},
+    {{"item": "GSTIN Active & State Registration Matching", "passed": true, "note": "..."}},
+    {{"item": "Statutory CA Turnover Certificate & ICAI UDIN", "passed": true, "note": "..."}},
+    {{"item": "GFR Rule 173 Past Experience Benchmark (>= 40%)", "passed": true, "note": "..."}},
+    {{"item": "Similar Nature of Work & Satisfactory Track Record", "passed": true, "note": "..."}}
+  ],
+  "reasons_for_rejection": ["..."]
+}}
+Return ONLY the JSON string.
+"""
+
+    try:
+        response = model.generate_content([prompt, *images])
+        raw_txt = response.text.strip()
+        if raw_txt.startswith("```json"):
+            raw_txt = raw_txt[7:]
+        elif raw_txt.startswith("```"):
+            raw_txt = raw_txt[3:]
+        if raw_txt.endswith("```"):
+            raw_txt = raw_txt[:-3]
+        data = json.loads(raw_txt.strip())
+        data["tender_estimated_cost"] = estimated_tender_cost
+        data["success"] = True
+        return data
+    except Exception as e:
+        logger.error(f"Gemini document verification error: {e}")
+        return {
+            "success": False,
+            "verdict": "ERROR",
+            "error": f"AI Verification failed: {str(e)}"
+        }
+

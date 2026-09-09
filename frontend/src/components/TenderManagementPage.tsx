@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
   FileText, Plus, ShieldCheck, AlertTriangle, CheckCircle2,
   Users, Award, DollarSign, Calendar, Building2, Gavel, Search,
-  RefreshCw, X, FileCheck
+  RefreshCw, X, FileCheck, Eye, Download, UploadCloud, Check, XCircle
 } from 'lucide-react';
 
 interface Tender {
@@ -34,6 +34,13 @@ export const TenderManagementPage: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [awarding, setAwarding] = useState(false);
   const [awardSuccess, setAwardSuccess] = useState<string | null>(null);
+
+  // AI Document Scrutiny State
+  const [showDocModal, setShowDocModal] = useState(false);
+  const [verifyingDoc, setVerifyingDoc] = useState(false);
+  const [docScrutinyResult, setDocScrutinyResult] = useState<any | null>(null);
+  const [demoDocs, setDemoDocs] = useState<any[]>([]);
+  const [activeBidderForDoc, setActiveBidderForDoc] = useState<any | null>(null);
 
   // New Tender Form State
   const [formData, setFormData] = useState({
@@ -103,6 +110,65 @@ export const TenderManagementPage: React.FC = () => {
       alert('Award error: ' + (e.response?.data?.detail || e.message));
     } finally {
       setAwarding(false);
+    }
+  };
+
+  const fetchDemoDocs = async () => {
+    try {
+      const res = await axios.get('/api/tenders/demo-sample-docs');
+      setDemoDocs(res.data.sample_documents || []);
+    } catch (e) {
+      console.error('Failed to load demo docs:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchDemoDocs();
+  }, []);
+
+  const handleOpenDocScrutiny = (bidder: any, tender: any) => {
+    setActiveBidderForDoc({ bidder, tender });
+    setDocScrutinyResult(null);
+    setShowDocModal(true);
+  };
+
+  const handleUploadAndVerify = async (file: File) => {
+    setVerifyingDoc(true);
+    setDocScrutinyResult(null);
+    try {
+      const token = localStorage.getItem('mplads_token');
+      const headers = {
+        'Content-Type': 'multipart/form-data',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      };
+      const data = new FormData();
+      data.append('file', file);
+      if (activeBidderForDoc?.tender?.id) {
+        data.append('tender_id', activeBidderForDoc.tender.id);
+      }
+      if (activeBidderForDoc?.tender?.estimated_cost) {
+        data.append('estimated_cost', activeBidderForDoc.tender.estimated_cost.toString());
+      }
+      const res = await axios.post('/api/tenders/verify-documents', data, { headers });
+      setDocScrutinyResult(res.data);
+    } catch (e: any) {
+      alert('Document verification error: ' + (e.response?.data?.detail || e.message));
+    } finally {
+      setVerifyingDoc(false);
+    }
+  };
+
+  const handleSelectDemoDoc = async (demoDoc: any) => {
+    setVerifyingDoc(true);
+    setDocScrutinyResult(null);
+    try {
+      // Fetch the PDF blob from demo-sample-docs
+      const blobRes = await axios.get(demoDoc.download_url, { responseType: 'blob' });
+      const file = new File([blobRes.data], demoDoc.filename, { type: 'application/pdf' });
+      await handleUploadAndVerify(file);
+    } catch (e: any) {
+      alert('Failed to load demo document: ' + e.message);
+      setVerifyingDoc(false);
     }
   };
 
@@ -388,18 +454,29 @@ export const TenderManagementPage: React.FC = () => {
                               ) : '—'}
                             </td>
                             <td className="p-3 text-right">
-                              {isL1 && selectedTender.tender.status !== 'AWARDED' && (
+                              <div className="flex items-center justify-end space-x-2">
                                 <button
-                                  onClick={() => handleAwardL1(selectedTender.tender.id)}
-                                  disabled={awarding}
-                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold shadow-sm transition-colors"
+                                  onClick={() => handleOpenDocScrutiny(b, selectedTender.tender)}
+                                  className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 rounded text-[11px] font-semibold flex items-center space-x-1 transition-colors"
+                                  title="Inspect technical eligibility documents with AI"
                                 >
-                                  Award Contract
+                                  <FileCheck className="w-3 h-3 text-indigo-600" />
+                                  <span>AI Scrutiny</span>
                                 </button>
-                              )}
-                              {b.status === 'AWARDED_L1' && (
-                                <span className="text-emerald-600 font-bold text-[11px]">Awarded ✓</span>
-                              )}
+
+                                {isL1 && selectedTender.tender.status !== 'AWARDED' && (
+                                  <button
+                                    onClick={() => handleAwardL1(selectedTender.tender.id)}
+                                    disabled={awarding}
+                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold shadow-sm transition-colors"
+                                  >
+                                    Award Contract
+                                  </button>
+                                )}
+                                {b.status === 'AWARDED_L1' && (
+                                  <span className="text-emerald-600 font-bold text-[11px]">Awarded ✓</span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -528,6 +605,231 @@ export const TenderManagementPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* AI Document Scrutiny (Envelope-1 Technical Bid) Modal */}
+      {showDocModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 max-w-2xl w-full rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-5 my-8">
+            <div className="flex justify-between items-start border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono text-xs font-bold">
+                    GFR Rule 173(v)
+                  </span>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-1.5">
+                    <FileCheck className="w-5 h-5 text-indigo-600" />
+                    <span>Envelope-1 AI Technical Bid Scrutiny</span>
+                  </h2>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Automated computer vision audit of vendor identity, CA turnover (ICAI UDIN), and past work completion certificates.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDocModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Target Bidder Banner */}
+            {activeBidderForDoc && (
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex justify-between items-center text-xs">
+                <div>
+                  <span className="text-slate-500">Applicant Vendor:</span>
+                  <div className="font-bold text-slate-900 dark:text-white">
+                    {activeBidderForDoc.bidder.firm_name}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500">Tender Estimated Value:</span>
+                  <div className="font-mono font-bold text-indigo-600">
+                    {formatLakhs(activeBidderForDoc.tender?.estimated_cost || 4500000)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 1-Click Demo Dossiers Selection */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
+                <Award className="w-3.5 h-3.5 text-amber-500" />
+                <span>SIH Jury Live Testing: Select Pre-Generated Sample Dossier</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {demoDocs.map((d: any) => {
+                  const isQual = d.expected_verdict === 'QUALIFIED';
+                  return (
+                    <div
+                      key={d.filename}
+                      className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all ${
+                        isQual
+                          ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 hover:border-emerald-400'
+                          : 'border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 hover:border-rose-400'
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs text-slate-900 dark:text-white">
+                            {d.title}
+                          </span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            isQual
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-rose-600 text-white'
+                          }`}>
+                            {d.expected_verdict}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                          {d.description}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center space-x-2 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectDemoDoc(d)}
+                          disabled={verifyingDoc}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-colors text-white ${
+                            isQual
+                              ? 'bg-emerald-600 hover:bg-emerald-700'
+                              : 'bg-rose-600 hover:bg-rose-700'
+                          } disabled:opacity-50`}
+                        >
+                          {verifyingDoc ? 'Scrutinizing...' : `Test ${isQual ? 'Passing Case' : 'Failing Case'}`}
+                        </button>
+                        <a
+                          href={d.download_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors"
+                          title="Download sample PDF"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Custom PDF Upload */}
+            <div className="pt-2">
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                Or Upload Contractor Technical Bid PDF (Max 25MB):
+              </label>
+              <label className="cursor-pointer border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-xl p-4 flex flex-col items-center justify-center space-y-1 bg-slate-50/50 dark:bg-slate-800/40 transition-colors">
+                <UploadCloud className="w-6 h-6 text-indigo-500" />
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {verifyingDoc ? 'Executing Gemini 3.6 Flash Multi-Page Vision Scrutiny...' : 'Click to select and scan contractor PDF'}
+                </span>
+                <span className="text-[10px] text-slate-400">Accepts 2-page T-1 & T-2 Formats</span>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  disabled={verifyingDoc}
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleUploadAndVerify(f);
+                  }}
+                />
+              </label>
+            </div>
+
+            {/* AI Verification Results */}
+            {docScrutinyResult && (
+              <div className="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-800 animate-in fade-in">
+                {/* Result Verdict Card */}
+                <div className={`p-4 rounded-xl border flex items-start space-x-3 ${
+                  docScrutinyResult.overall_verdict === 'QUALIFIED'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200'
+                }`}>
+                  {docScrutinyResult.overall_verdict === 'QUALIFIED' ? (
+                    <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <XCircle className="w-6 h-6 text-rose-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-sm">
+                        Scrutiny Outcome: {docScrutinyResult.overall_verdict}
+                      </h4>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded bg-white/80 dark:bg-slate-900/80">
+                        Score: {docScrutinyResult.score || 0}/100
+                      </span>
+                    </div>
+                    <p className="text-xs leading-relaxed opacity-90">
+                      {docScrutinyResult.audit_summary}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Statutory Scrutiny Checklist */}
+                {docScrutinyResult.checklist && (
+                  <div className="space-y-2">
+                    <h5 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Statutory Compliance Checklist:
+                    </h5>
+                    <div className="space-y-1.5">
+                      {docScrutinyResult.checklist.map((item: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-xs"
+                        >
+                          <div className="flex items-center space-x-2">
+                            {item.passed ? (
+                              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                            ) : (
+                              <X className="w-4 h-4 text-rose-600 shrink-0" />
+                            )}
+                            <span className="font-medium text-slate-800 dark:text-slate-200">
+                              {item.item}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {item.note}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Disqualification / Failure Reasons */}
+                {docScrutinyResult.reasons_for_rejection && docScrutinyResult.reasons_for_rejection.length > 0 && (
+                  <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 space-y-1.5">
+                    <h5 className="text-xs font-bold text-rose-800 dark:text-rose-300 flex items-center space-x-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      <span>GFR 2017 Ground(s) for Disqualification:</span>
+                    </h5>
+                    <ul className="list-disc list-inside text-xs text-rose-700 dark:text-rose-400 space-y-1">
+                      {docScrutinyResult.reasons_for_rejection.map((r: string, i: number) => (
+                        <li key={i}>{r}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end pt-3 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowDocModal(false)}
+                className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 font-medium text-xs"
+              >
+                Close Scrutiny Window
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

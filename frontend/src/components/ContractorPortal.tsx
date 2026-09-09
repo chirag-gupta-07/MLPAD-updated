@@ -33,6 +33,30 @@ export const ContractorPortal: React.FC = () => {
   const [verifyingPhoto, setVerifyingPhoto] = useState<string | null>(null);
   const [photoResult, setPhotoResult] = useState<any | null>(null);
 
+  // Bid PDF Document Scrutiny Pre-Check State
+  const [verifyingDoc, setVerifyingDoc] = useState(false);
+  const [docPreCheckResult, setDocPreCheckResult] = useState<any | null>(null);
+
+  const handleSelfCheckDoc = async (file: File) => {
+    setVerifyingDoc(true);
+    setDocPreCheckResult(null);
+    try {
+      const data = new FormData();
+      data.append('file', file);
+      if (selectedTenderForBid?.id) data.append('tender_id', selectedTenderForBid.id);
+      if (selectedTenderForBid?.estimated_cost) data.append('estimated_cost', selectedTenderForBid.estimated_cost.toString());
+      const res = await axios.post('/api/tenders/verify-documents', data, {
+        headers: { 'Content-Type': 'multipart/form-data', ...getHeaders() }
+      });
+      setDocPreCheckResult(res.data);
+    } catch (e: any) {
+      alert('Document verification error: ' + (e.response?.data?.detail || e.message));
+    } finally {
+      setVerifyingDoc(false);
+    }
+  };
+
+
   const getHeaders = () => {
     const token = localStorage.getItem('mplads_token');
     return token ? { Authorization: `Bearer ${token}` } : {};
@@ -497,6 +521,47 @@ export const ContractorPortal: React.FC = () => {
                       onChange={(e) => setBidForm({ ...bidForm, equipment_details: e.target.value })}
                       className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                     />
+                  </div>
+
+                  {/* Mandatory Statutory Technical Bid PDF Upload */}
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 mb-1 font-semibold">
+                      Statutory Eligibility Dossier (PDF - Form T-1 & T-2)
+                    </label>
+                    <label className="cursor-pointer border border-dashed border-indigo-300 dark:border-indigo-800 rounded-lg p-2.5 flex items-center justify-between bg-white dark:bg-slate-900 hover:bg-indigo-50/50 transition-colors">
+                      <div className="flex items-center space-x-2">
+                        <Upload className="w-4 h-4 text-indigo-600" />
+                        <span className="text-[11px] text-slate-700 dark:text-slate-300">
+                          {verifyingDoc ? 'Running Gemini 3.6 Flash Pre-Check...' : 'Upload & Pre-Validate PDF Dossier'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-indigo-600 font-bold">Browse PDF</span>
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        disabled={verifyingDoc}
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleSelfCheckDoc(f);
+                        }}
+                      />
+                    </label>
+
+                    {/* Pre-Check Feedback Alert */}
+                    {docPreCheckResult && (
+                      <div className={`mt-2 p-2.5 rounded-lg text-[11px] border ${
+                        docPreCheckResult.overall_verdict === 'QUALIFIED'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
+                          : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-800 dark:text-rose-300'
+                      }`}>
+                        <div className="flex items-center justify-between font-bold">
+                          <span>AI Pre-Check: {docPreCheckResult.overall_verdict} (Score: {docPreCheckResult.score || 0}/100)</span>
+                          <span>UDIN: {docPreCheckResult.ca_udin || 'N/A'}</span>
+                        </div>
+                        <p className="mt-1 opacity-90">{docPreCheckResult.audit_summary}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 

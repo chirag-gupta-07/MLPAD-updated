@@ -6,7 +6,7 @@ Complies with GFR 2017 Rules 163 & 173 and CVC Procurement Guidelines.
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query, UploadFile, File, Form
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import json
@@ -16,10 +16,12 @@ from backend.app.db.models import Tender, Bid, WorkOrder, ContractorProfile, Wor
 from backend.app.api.auth import get_current_user, require_roles
 from backend.app.services.contractor_ai import (
     calculate_contractor_reliability,
-    detect_cartel_and_collusion
+    detect_cartel_and_collusion,
+    verify_technical_bid_pdf
 )
 
 router = APIRouter(prefix="/api/tenders", tags=["E-Procurement & Tendering"])
+
 
 
 # Pydantic Schemas
@@ -479,3 +481,79 @@ def award_tender_path(
     db: Session = Depends(get_db)
 ):
     return _award_tender_helper(tender_id, contractor_id, db)
+
+
+@router.post("/verify-documents")
+async def verify_bid_documents(
+    file: UploadFile = File(...),
+    tender_id: Optional[str] = Form(None),
+    estimated_cost: Optional[float] = Form(4500000.0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    AI Document Scrutiny Endpoint for Envelope-1 Technical Bids.
+    Accepts an uploaded PDF (statutory PAN, GSTIN, CA certificate, PWD completion report)
+    and executes Gemini 3.6 Flash vision scrutiny against GFR 2017 Rule 173(v) benchmarks.
+    """
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=400,
+            detail="Only official PDF documents are accepted for Envelope-1 technical verification."
+        )
+
+    # Determine estimated cost if tender_id provided
+    cost = estimated_cost or 4500000.0
+    if tender_id:
+        tender = db.query(Tender).filter(Tender.id == tender_id).first()
+        if tender and tender.estimated_cost:
+            cost = tender.estimated_cost
+
+    pdf_bytes = await file.read()
+    if len(pdf_bytes) > 25 * 1024 * 1024:  # 25 MB limit
+        raise HTTPException(status_code=400, detail="File size exceeds 25 MB limit.")
+
+    result = verify_technical_bid_pdf(pdf_bytes, cost)
+    result["filename"] = file.filename
+    result["file_size_kb"] = round(len(pdf_bytes) / 1024, 1)
+    return result
+
+
+@router.get("/demo-sample-docs")
+def list_demo_sample_documents():
+    """Returns list of pre-generated realistic sample technical bid dossiers for SIH live evaluation."""
+    import os
+    demo_dir = os.path.join(os.getcwd(), "data", "demo", "sample_bid_documents")
+    docs = []
+    if os.path.exists(demo_dir):
+        for fname in os.listdir(demo_dir):
+            if fname.endswith(".pdf"):
+                is_qualified = "qualified" in fname and "disqualified" not in fname
+                fpath = os.path.join(demo_dir, fname)
+                size_kb = round(os.path.getsize(fpath) / 1024, 1)
+                docs.append({
+                    "filename": fname,
+                    "title": "M/s Gandhi Construction (Compliant Dossier)" if is_qualified else "M/s Sharma Infra (Defective / Cartel Dossier)",
+                    "expected_verdict": "QUALIFIED" if is_qualified else "DISQUALIFIED",
+                    "description": "Valid PAN, Active GSTIN, ICAI UDIN certified Rs 1.65 Cr turnover, PWD Rs 38.5L completion certificate." if is_qualified else "GSTIN state mismatch, missing CA UDIN, Rs 6.2L past work (< 40% threshold), 74-day delay penalty.",
+                    "size_kb": size_kb,
+                    "download_url": f"/api/tenders/demo-sample-docs/{fname}"
+                })
+    return {"sample_documents": docs}
+
+
+@router.get("/demo-sample-docs/{filename}")
+def download_demo_sample_doc(filename: str):
+    """Allows 1-click download of sample demo PDFs for live SIH demonstration."""
+    import os
+    from fastapi.responses import FileResponse
+    demo_dir = os.path.join(os.getcwd(), "data", "demo", "sample_bid_documents")
+    filepath = os.path.join(demo_dir, os.path.basename(filename))
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="Demo document not found.")
+    return FileResponse(
+        filepath,
+        media_type="application/pdf",
+        filename=os.path.basename(filename)
+    )
+
