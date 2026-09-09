@@ -13,6 +13,10 @@ import { ApprovalsPage } from './components/ApprovalsPage';
 import { PaymentsPage } from './components/PaymentsPage';
 import { DevelopmentRequestsPage } from './components/DevelopmentRequestsPage';
 import { ProjectDetailPage } from './components/ProjectDetailPage';
+import { TenderManagementPage } from './components/TenderManagementPage';
+import { ContractorPortal } from './components/ContractorPortal';
+
+
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -104,12 +108,27 @@ export const App: React.FC = () => {
                 </div>
               )}
 
+              {/* Tenders & Procurement Tab */}
+              {activeTab === 'tenders' && (
+                <div className="animate-in fade-in duration-150">
+                  <TenderManagementPage />
+                </div>
+              )}
+
+              {/* Contractor Portal Tab */}
+              {activeTab === 'contractor' && (
+                <div className="animate-in fade-in duration-150">
+                  <ContractorPortal />
+                </div>
+              )}
+
               {/* Approvals Tab */}
               {activeTab === 'approvals' && (
                 <div className="animate-in fade-in duration-150">
                   <ApprovalsPage />
                 </div>
               )}
+
 
               {/* Payments Tab */}
               {activeTab === 'payments' && (

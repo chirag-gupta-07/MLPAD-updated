@@ -1,8 +1,22 @@
-import React from 'react';
-import { ShieldAlert, BarChart3, Map, Bot, Upload, RefreshCw, Camera, Sun, Moon, Monitor } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  ShieldAlert, BarChart3, Map, Bot, Upload, RefreshCw, Camera,
+  Sun, Moon, Monitor, Gavel, Briefcase, UserCheck
+} from 'lucide-react';
 import { useTheme } from './ThemeProvider';
+import axios from 'axios';
 
-export type TabType = 'overview' | 'works' | 'approvals' | 'payments' | 'public-requests' | 'gis' | 'evidence' | 'assistant';
+export type TabType =
+  | 'overview'
+  | 'works'
+  | 'tenders'
+  | 'contractor'
+  | 'approvals'
+  | 'payments'
+  | 'public-requests'
+  | 'gis'
+  | 'evidence'
+  | 'assistant';
 
 interface NavbarProps {
   activeTab: TabType;
@@ -10,15 +24,17 @@ interface NavbarProps {
   openUploadModal: () => void;
 }
 
-import axios from 'axios';
-
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUploadModal }) => {
   const { theme, setTheme } = useTheme();
-  const [isResetting, setIsResetting] = React.useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [activePersona, setActivePersona] = useState<string>('admin');
+  const [switching, setSwitching] = useState(false);
 
   const tabs: { id: TabType; label: string }[] = [
     { id: 'overview', label: 'Dashboard' },
     { id: 'works', label: 'Projects' },
+    { id: 'tenders', label: 'E-Tenders' },
+    { id: 'contractor', label: 'Contractor Portal' },
     { id: 'approvals', label: 'Approvals' },
     { id: 'payments', label: 'Payments' },
     { id: 'public-requests', label: 'Public Requests' },
@@ -26,6 +42,34 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUpl
     { id: 'evidence', label: 'Evidence' },
     { id: 'assistant', label: 'AI Assistant' },
   ];
+
+  const handlePersonaChange = async (personaKey: string) => {
+    setActivePersona(personaKey);
+    setSwitching(true);
+    try {
+      const res = await axios.post(`/api/auth/switch-persona/${personaKey}`);
+      const token = res.data.access_token;
+      localStorage.setItem('mplads_token', token);
+      localStorage.setItem('mplads_user', JSON.stringify(res.data.user));
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      // Smart tab navigation based on role
+      if (personaKey === 'contractor') {
+        setActiveTab('contractor');
+      } else if (personaKey === 'dno') {
+        setActiveTab('tenders');
+      }
+    } catch (e) {
+      console.error('Failed to switch persona:', e);
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  useEffect(() => {
+    // Initialize default admin persona session on first load
+    handlePersonaChange('admin');
+  }, []);
 
   const handleResetDemo = async () => {
     const confirmed = window.confirm(
@@ -46,7 +90,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUpl
 
   return (
     <header className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 sticky top-0 z-50 shadow-sm border-b border-slate-200 dark:border-slate-800 transition-colors duration-200">
-      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6">
+      <div className="w-full max-w-[1700px] mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16 gap-3">
           
           {/* Logo & Branding */}
@@ -57,13 +101,18 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUpl
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">MLPAD</span>
+                <span className="bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                  ENTERPRISE
+                </span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap hidden sm:block">MPLADS Risk Intelligence Platform</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap hidden sm:block">
+                MPLADS Risk Intelligence & E-Procurement
+              </p>
             </div>
           </div>
 
-          {/* Navigation Tabs - Full height aligned with bottom border */}
-          <nav className="flex items-center h-16 overflow-x-auto no-scrollbar space-x-1 xl:space-x-2 shrink min-w-0">
+          {/* Navigation Tabs */}
+          <nav className="flex items-center h-16 overflow-x-auto no-scrollbar space-x-1 xl:space-x-1.5 shrink min-w-0">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -79,7 +128,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUpl
             ))}
           </nav>
 
-          {/* Actions */}
+          {/* Actions & Role Switcher */}
           <div className="flex items-center space-x-2 shrink-0">
             {/* Theme Toggle */}
             <div className="flex items-center space-x-0.5 bg-slate-100 dark:bg-slate-800 rounded-md p-0.5 border border-slate-200 dark:border-slate-700">
@@ -94,13 +143,26 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUpl
               </button>
             </div>
 
-            {/* Role Dropdown Demo */}
-            <select className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-700 dark:text-slate-300 font-medium">
-              <option>District Official</option>
-              <option>Site Supervisor</option>
-              <option>Authorized Authority</option>
-              <option>Public Citizen</option>
-            </select>
+            {/* 1-Click Role / Persona Switcher for SIH Presentation */}
+            <div className="relative flex items-center">
+              <div className="flex items-center space-x-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs">
+                <UserCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="text-[11px] text-slate-500 hidden md:inline">Role:</span>
+                <select
+                  value={activePersona}
+                  onChange={(e) => handlePersonaChange(e.target.value)}
+                  disabled={switching}
+                  className="bg-transparent font-semibold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer text-xs"
+                >
+                  <option value="admin">MoSPI Super Admin (National)</option>
+                  <option value="mp">Hon'ble MP (Varanasi)</option>
+                  <option value="dno">District Collector / DM (Varanasi)</option>
+                  <option value="contractor">Contractor (Gandhi Const.)</option>
+                  <option value="vigilance">CAG Auditor (Vigilance)</option>
+                  <option value="citizen">Citizen (Social Auditor)</option>
+                </select>
+              </div>
+            </div>
 
             {/* Reset Demo Button */}
             <button
@@ -110,7 +172,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, openUpl
               className="flex items-center space-x-1 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2.5 py-1.5 rounded-md text-xs font-semibold transition whitespace-nowrap"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{isResetting ? 'Resetting...' : 'Reset Demo'}</span>
+              <span className="hidden xl:inline">{isResetting ? 'Resetting...' : 'Reset Demo'}</span>
             </button>
 
             <button

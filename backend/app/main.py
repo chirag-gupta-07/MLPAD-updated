@@ -21,6 +21,10 @@ from backend.app.api.approvals import router as approvals_router
 from backend.app.api.payments_api import router as payments_router
 from backend.app.api.dev_requests import router as dev_requests_router
 from backend.app.api.project_detail import router as project_detail_router
+from backend.app.api.auth import router as auth_router
+from backend.app.api.tenders import router as tenders_router
+from backend.app.api.contractors import router as contractors_router
+from backend.app.db.database import engine, Base
 from backend.app.services.citizen_evidence_service import seed_demo_citizen_evidence
 from backend.app.db.seed_scenarios import seed_demo_scenarios
 from backend.app.db.operations_db import init_operations_db
@@ -104,6 +108,12 @@ app.include_router(approvals_router)
 app.include_router(payments_router)
 app.include_router(dev_requests_router)
 app.include_router(project_detail_router)
+
+# Enterprise Procurement & RBAC Routers
+app.include_router(auth_router)
+app.include_router(tenders_router)
+app.include_router(contractors_router)
+
 
 
 

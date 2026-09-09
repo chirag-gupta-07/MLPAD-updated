@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  # 1. Enterprise Relational Database (PostgreSQL with PostGIS)
+  db:
+    image: postgis/postgis:16-alpine
+    container_name: mplads_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mplads_user
+      POSTGRES_PASSWORD: mplads_secure_password_2026
+      POSTGRES_DB: mplads_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mplads_user -d mplads_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. High-Throughput FastAPI Backend
   backend:
     build:
       context: .
@@ -10,11 +30,18 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
+      - DATABASE_URL=postgresql://mplads_user:mplads_secure_password_2026@db:5432/mplads_db
+      - JWT_SECRET=sih2026_national_mplads_secure_jwt_token_key
+      - PERSIST_DATABASE=true
     volumes:
       - ./data:/app/data
       - ./models:/app/models
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
+  # 3. Modern React Vite Production Nginx Frontend
   frontend:
     build:
       context: ./frontend
@@ -25,3 +52,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  postgres_data:

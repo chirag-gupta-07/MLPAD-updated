@@ -28,3 +28,15 @@ geopy>=2.4.0
 # Testing & Quality
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
+
+# Database & Migrations
+psycopg2-binary>=2.9.9
+alembic>=1.13.0
+
+# Security & Authentication
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Metadata & Inspection
+exifread>=3.0.0
+

@@ -78,6 +78,10 @@ data/lifecycle/*.db*
 data/operations/*.db*
 !data/operations/.gitkeep
 
+# Master Local SQLite DB
+data/*.db*
+
+
 
 # Large Local Raw & Processed Datasets
 data/raw/
