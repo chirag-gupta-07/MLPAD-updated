@@ -76,19 +76,25 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enable CORS with explicit configurable allowlist
-ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv(
-        "CORS_ORIGINS",
-        "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000"
-    ).split(",")
-    if origin.strip()
-]
+# Enable CORS with liberal origins support for deployment domains (Render, localhost, Vercel)
+raw_cors = os.getenv("CORS_ORIGINS", "")
+if raw_cors:
+    ALLOWED_ORIGINS = [origin.strip() for origin in raw_cors.split(",") if origin.strip()]
+else:
+    ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "https://mlpad-portal.onrender.com",
+        "https://mlpad-gov-portal.onrender.com",
+        "https://mplads-frontend.onrender.com"
+    ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\.onrender\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

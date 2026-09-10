@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import {
   Lock, UserCheck, Key, Eye, EyeOff, AlertCircle,
@@ -91,7 +91,7 @@ const PERSONAS: PersonaInfo[] = [
     icon: Scale,
     landingTab: 'evidence',
     description: 'Ground truth photo verification, AI perceptual-hash reuse signals, and contractor cartel graph investigation.',
-    username: 'cvo_vigilance'
+    username: 'cag_vigilance'
   },
   {
     key: 'citizen',

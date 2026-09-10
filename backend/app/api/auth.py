@@ -224,10 +224,18 @@ def switch_persona(persona_key: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=403, detail="Persona switching is disabled in production mode.")
 
     key = persona_key.lower().strip()
-    if key not in DEMO_PERSONAS:
-        raise HTTPException(status_code=404, detail=f"Persona '{persona_key}' not found. Available: {list(DEMO_PERSONAS.keys())}")
+    p = None
+    if key in DEMO_PERSONAS:
+        p = DEMO_PERSONAS[key]
+    else:
+        # Also check role name, username, or alias
+        for pk, pv in DEMO_PERSONAS.items():
+            if pk == key or pv["role"].lower() == key or pv["username"].lower() == key:
+                p = pv
+                break
 
-    p = DEMO_PERSONAS[key]
+    if not p:
+        raise HTTPException(status_code=404, detail=f"Persona '{persona_key}' not found. Available: {list(DEMO_PERSONAS.keys())}")
     
     # Ensure user exists in DB
     existing = db.query(User).filter(User.id == p["id"]).first()
