@@ -81,38 +81,38 @@ export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue
   const getRiskBadge = (level: string, score: number) => {
     if (level === 'HIGH') {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-600 mr-1.5"></span>
-          HIGH ({score.toFixed(0)})
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold text-[#C62828] bg-red-50 dark:bg-red-950/40 border border-[#C62828]/25 font-mono">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#C62828] mr-1.5 shrink-0"></span>
+          HIGH {score.toFixed(0)}
         </span>
       );
     } else if (level === 'MEDIUM') {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-600 mr-1.5"></span>
-          MEDIUM ({score.toFixed(0)})
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold text-[#D88900] bg-amber-50 dark:bg-amber-950/40 border border-[#D88900]/25 font-mono">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#D88900] mr-1.5 shrink-0"></span>
+          MED {score.toFixed(0)}
         </span>
       );
     } else {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mr-1.5"></span>
-          LOW ({score.toFixed(0)})
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold text-[#16865A] bg-emerald-50 dark:bg-emerald-950/40 border border-[#16865A]/25 font-mono">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#16865A] mr-1.5 shrink-0"></span>
+          LOW {score.toFixed(0)}
         </span>
       );
     }
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 rounded-lg border border-[#D9E0E8] dark:border-slate-800 overflow-hidden shadow-xs">
       
       {/* Header & Controls */}
-      <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+      <div className="p-4 border-b border-[#D9E0E8] dark:border-slate-800 bg-[#F5F7FA] dark:bg-slate-850">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2">
-              <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 flex items-center">
-                <ShieldAlert className="w-4 h-4 text-emerald-600 mr-2" />
+              <h3 className="font-bold text-sm sm:text-base text-[#0B1F3A] dark:text-white flex items-center">
+                <ShieldAlert className="w-4 h-4 text-[#1558A6] mr-2" />
                 MPLADS Works Risk Inspector
               </h3>
               <button
@@ -121,14 +121,14 @@ export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue
                   setSearch('133447');
                   setPage(1);
                 }}
-                className="hidden sm:inline-flex items-center space-x-1 text-[11px] bg-emerald-100 dark:bg-emerald-900/30 hover:bg-emerald-200 dark:hover:bg-emerald-800/40 text-emerald-900 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold border border-emerald-300 dark:border-emerald-700/50 transition"
+                className="hidden sm:inline-flex items-center space-x-1 text-[10px] bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-[#1558A6] dark:text-blue-300 px-2 py-0.5 rounded font-semibold border border-blue-200 dark:border-blue-900 transition"
                 title="Jump directly to Flagship Road Construction Demo with 12% execution gap"
               >
-                <Sparkles className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
-                <span>Explore Flagship Demo (Road Work)</span>
+                <Sparkles className="w-3 h-3 text-[#1558A6]" />
+                <span>Flagship Demo (Road Work)</span>
               </button>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-[#5F6F82] dark:text-slate-400 mt-0.5">
               Showing {totalRecords.toLocaleString()} audited infrastructure works ranked by multi-signal risk severity
             </p>
           </div>
@@ -146,15 +146,14 @@ export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue
                 }
                 setPage(1);
               }}
-              className={`text-xs py-1.5 px-3 rounded-lg font-bold transition flex items-center space-x-1.5 border ${
+              className={`text-xs py-1.5 px-2.5 rounded font-semibold transition flex items-center space-x-1.5 border ${
                 search === 'MPLADS/REC'
-                  ? 'bg-purple-600 text-white border-purple-700 shadow-sm ring-2 ring-purple-400/40'
-                  : 'bg-white dark:bg-slate-800 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/60 hover:bg-purple-50 dark:hover:bg-purple-950/40'
+                  ? 'bg-[#1558A6] text-white border-[#0B1F3A]'
+                  : 'bg-white dark:bg-slate-800 text-[#0B1F3A] dark:text-slate-200 border-[#D9E0E8] dark:border-slate-700 hover:bg-slate-100'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-purple-500" />
-              <span>Live Lifecycle Works</span>
-              {search === 'MPLADS/REC' && <span className="ml-1 text-[10px] bg-white/20 px-1.5 py-0.2 rounded-full">ACTIVE</span>}
+              <span>Lifecycle Works</span>
+              {search === 'MPLADS/REC' && <span className="ml-1 text-[9px] bg-white/20 px-1 rounded">ACTIVE</span>}
             </button>
 
             <button
@@ -163,43 +162,43 @@ export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue
                 setVerificationQueue(!verificationQueue);
                 setPage(1);
               }}
-              className={`text-xs py-1.5 px-3 rounded-lg font-bold transition flex items-center space-x-1.5 border ${
+              className={`text-xs py-1.5 px-2.5 rounded font-semibold transition flex items-center space-x-1.5 border ${
                 verificationQueue
-                  ? 'bg-amber-600 text-white border-amber-700 shadow-sm ring-2 ring-amber-400/40'
-                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  ? 'bg-[#C62828] text-white border-[#9E1C1C]'
+                  : 'bg-white dark:bg-slate-800 text-[#0B1F3A] dark:text-slate-200 border-[#D9E0E8] dark:border-slate-700 hover:bg-slate-100'
               }`}
             >
-              <AlertCircle className={`w-3.5 h-3.5 ${verificationQueue ? 'text-white' : 'text-amber-600 dark:text-amber-500'}`} />
+              <AlertCircle className={`w-3.5 h-3.5 ${verificationQueue ? 'text-white' : 'text-[#C62828]'}`} />
               <span>Verification Queue</span>
-              {verificationQueue && <span className="ml-1 text-[10px] bg-white/20 px-1.5 py-0.2 rounded-full">ACTIVE</span>}
+              {verificationQueue && <span className="ml-1 text-[9px] bg-white/20 px-1 rounded">ACTIVE</span>}
             </button>
 
-            <form onSubmit={handleSearchSubmit} className="relative flex-1 md:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <form onSubmit={handleSearchSubmit} className="relative flex-1 md:w-60">
+              <Search className="w-3.5 h-3.5 text-[#5F6F82] absolute left-3 top-2.5" />
               <input
                 type="text"
-                placeholder="Search ID, MP, District, Keyword..."
+                placeholder="Search ID, MP, District..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-800 text-[#0B1F3A] dark:text-slate-100 border border-[#D9E0E8] dark:border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-[#1558A6]"
               />
             </form>
 
             <select
               value={riskLevel}
               onChange={(e) => { setRiskLevel(e.target.value); setPage(1); }}
-              className="text-xs py-1.5 px-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="text-xs py-1.5 px-2.5 bg-white dark:bg-slate-800 text-[#0B1F3A] dark:text-slate-100 border border-[#D9E0E8] dark:border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-[#1558A6]"
             >
               <option value="">All Risk Tiers</option>
-              <option value="HIGH">🔴 High Risk Only</option>
-              <option value="MEDIUM">🟡 Medium Risk</option>
-              <option value="LOW">🟢 Low Risk / Compliant</option>
+              <option value="HIGH">High Risk Only</option>
+              <option value="MEDIUM">Medium Risk</option>
+              <option value="LOW">Low Risk / Compliant</option>
             </select>
 
             <select
               value={sector}
               onChange={(e) => { setSector(e.target.value); setPage(1); }}
-              className="text-xs py-1.5 px-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 max-w-[160px] truncate"
+              className="text-xs py-1.5 px-2.5 bg-white dark:bg-slate-800 text-[#0B1F3A] dark:text-slate-100 border border-[#D9E0E8] dark:border-slate-700 rounded focus:outline-none focus:ring-1 focus:ring-[#1558A6] max-w-[160px] truncate"
             >
               <option value="">All Sectors</option>
               <option value="Roads, Pathways & Bridges">Roads & Bridges</option>
@@ -270,9 +269,9 @@ export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue
       </div>
 
       {/* Table Content */}
-      <div className="overflow-x-auto border-t border-slate-100 dark:border-slate-800">
+      <div className="overflow-x-auto border-t border-[#D9E0E8] dark:border-slate-800">
         <table className="w-full min-w-[1150px] text-left text-xs">
-          <thead className="bg-slate-100/70 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+          <thead className="bg-[#F5F7FA] dark:bg-slate-850 text-[#0B1F3A] dark:text-slate-200 font-bold uppercase tracking-wider border-b border-[#D9E0E8] dark:border-slate-700 text-[11px]">
             <tr>
               <th className="px-4 py-3 min-w-[240px] max-w-[320px]">Work ID & Description</th>
               <th className="px-4 py-3 min-w-[120px]">Location</th>

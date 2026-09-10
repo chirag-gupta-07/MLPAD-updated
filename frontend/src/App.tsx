@@ -154,6 +154,42 @@ export const App: React.FC = () => {
               {/* Tab 1: Executive Overview */}
               {activeTab === 'overview' && (
                 <div className="space-y-6 animate-in fade-in duration-150">
+                  
+                  {/* National Portal Top Page Header */}
+                  <div className="bg-white dark:bg-slate-900 border border-[#D9E0E8] dark:border-slate-800 rounded-lg p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="w-2 h-2 rounded-full bg-[#1558A6]" />
+                        <h1 className="text-lg sm:text-xl font-bold text-[#0B1F3A] dark:text-white font-sans tracking-tight">
+                          Dashboard — National MPLADS Monitoring & Risk Intelligence
+                        </h1>
+                      </div>
+                      <p className="text-xs sm:text-sm text-[#5F6F82] dark:text-slate-400 mt-1 font-medium">
+                        Monitor project execution, financial patterns, verification signals and governance risks across the programme.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center space-x-3 shrink-0">
+                      <div className="text-right hidden md:block">
+                        <div className="text-[11px] font-mono text-[#5F6F82] dark:text-slate-400">
+                          Data State: <span className="font-semibold text-[#0B1F3A] dark:text-white">Active Production</span>
+                        </div>
+                        <div className="text-[10px] text-[#5F6F82]/80 dark:text-slate-500">
+                          Updated: 10 Sep 2026 • 18:42 IST
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={fetchSummary}
+                        disabled={loading}
+                        className="px-3 py-1.5 bg-[#F5F7FA] hover:bg-slate-150 dark:bg-slate-800 dark:hover:bg-slate-750 text-[#0B1F3A] dark:text-white border border-[#D9E0E8] dark:border-slate-700 rounded-md text-xs font-semibold flex items-center space-x-1.5 transition"
+                      >
+                        <span className={loading ? 'animate-spin inline-block' : ''}>⟳</span>
+                        <span>Refresh Data</span>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Top Operational KPI Hierarchy (Level 1: Critical) */}
                   <KpiCards
                     data={summary}
@@ -163,6 +199,8 @@ export const App: React.FC = () => {
 
                   {/* Visual Risk Charts */}
                   <RiskCharts summary={summary} />
+
+
 
                   {/* High-Risk Quick Grid with connected active filters */}
                   <WorksTable

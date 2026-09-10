@@ -87,7 +87,61 @@ def reset_all_databases_to_demo_state() -> dict:
                 logger.warning(f"Could not clear table {tbl}: {e}")
         conn.commit()
 
-    # 4. Re-seed all baseline data
+    # 4. Reset Relational Tenders and Bids to unawarded demonstration state
+    try:
+        from backend.app.db.database import SessionLocal
+        from backend.app.db.models import Tender, Bid, WorkOrder, Work
+        from datetime import datetime, timedelta
+
+        db = SessionLocal()
+        try:
+            # Remove all work orders generated during demo awards
+            db.query(WorkOrder).delete(synchronize_session=False)
+
+            # Delete custom tenders and bids created during ad-hoc testing, keeping standard baseline demo tenders
+            standard_tender_ids = ["NIT/2026/UP/VAR/0042", "NIT/2026/UP/VAR/0089"]
+            db.query(Bid).filter(~Bid.tender_id.in_(standard_tender_ids)).delete(synchronize_session=False)
+            ad_hoc_tenders = db.query(Tender).filter(~Tender.id.in_(standard_tender_ids)).all()
+            for at in ad_hoc_tenders:
+                db.delete(at)
+
+            # Reset Standard Tender 1 (Basantpur Road)
+            t1 = db.query(Tender).filter(Tender.id == "NIT/2026/UP/VAR/0042").first()
+            if t1:
+                t1.status = "PUBLISHED"
+                t1.awarded_contractor_id = None
+                t1.awarded_amount = None
+
+            # Reset Standard Tender 2 (Streetlights)
+            t2 = db.query(Tender).filter(Tender.id == "NIT/2026/UP/VAR/0089").first()
+            if t2:
+                t2.status = "PUBLISHED"
+                t2.awarded_contractor_id = None
+                t2.awarded_amount = None
+
+            # Reset Tender 1 Bids to sealed envelope presentation state:
+            # - Financial rank sealed (None)
+            # - Cartel flags cleared
+            # - Status SUBMITTED
+            # - Technical status QUALIFIED for legitimate bidders
+            bids = db.query(Bid).filter(Bid.tender_id == "NIT/2026/UP/VAR/0042").all()
+            for b in bids:
+                b.status = "SUBMITTED"
+                b.financial_rank = None
+                b.cartel_flags = None
+                b.technical_status = "QUALIFIED"
+
+            db.commit()
+            logger.info("Tenders and bids reset to pristine pre-evaluation demonstration state.")
+        except Exception as te:
+            logger.warning(f"Could not reset tenders/bids: {te}")
+            db.rollback()
+        finally:
+            db.close()
+    except Exception as e:
+        logger.warning(f"Relational DB reset error: {e}")
+
+    # 5. Re-seed all baseline data
     seed_demo_citizen_evidence(force=True)
     seed_demo_scenarios()
     seed_demo_operations(force=True)
@@ -95,7 +149,7 @@ def reset_all_databases_to_demo_state() -> dict:
     logger.info("All databases successfully restored to pristine presentation state.")
     return {
         "status": "success",
-        "message": "All databases and test records successfully reset to original demo state."
+        "message": "All databases, tenders, and test records successfully reset to original demo state."
     }
 
 

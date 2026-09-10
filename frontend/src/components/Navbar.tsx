@@ -201,7 +201,11 @@ export const Navbar: React.FC<NavbarProps> = ({
     try {
       const token = localStorage.getItem('mplads_token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post("/api/lifecycle/reset-demo", {}, { headers });
+      try {
+        await axios.post("/api/system/reset-demo", {}, { headers });
+      } catch (postErr) {
+        await axios.post("/api/lifecycle/reset-demo", {}, { headers });
+      }
       window.location.reload();
     } catch (err: any) {
       alert("Failed to reset demo: " + (err.response?.data?.detail || err.message));
@@ -224,97 +228,108 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 sticky top-0 z-40 shadow-xs border-b border-slate-200 dark:border-slate-800 transition-colors duration-200">
-        <div className="w-full max-w-[1700px] mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16 gap-4">
+      <header className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 sticky top-0 z-40 border-b border-[#D9E0E8] dark:border-slate-800 transition-colors duration-200">
+        {/* Tricolor decorative top micro-bar for Government of India identity */}
+        <div className="h-1 w-full flex">
+          <div className="h-full flex-1 bg-[#F28C28]" />
+          <div className="h-full flex-1 bg-white" />
+          <div className="h-full flex-1 bg-[#138A5B]" />
+        </div>
+
+        <div className="w-full max-w-[1700px] mx-auto px-3 sm:px-5">
+          <div className="flex items-center justify-between h-14 gap-2 sm:gap-4">
             
-            {/* LEFT: Burger Menu Button + Logo & Branding */}
-            <div className="flex items-center space-x-3 shrink-0">
+            {/* LEFT: Modules Drawer Button + Emblem & Portal Identity */}
+            <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
               
-              {/* Professional Hamburger Menu Trigger */}
+              {/* Institutional Hamburger Drawer Button */}
               <button
                 type="button"
                 onClick={() => setSidebarOpen(true)}
-                title="Open Governance Modules & Features Drawer"
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all flex items-center space-x-1.5 shadow-2xs group focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                title="Open Governance Modules Navigation Drawer"
+                className="px-2 py-1.5 rounded-md border border-[#D9E0E8] dark:border-slate-700 bg-[#F5F7FA] hover:bg-slate-200/70 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#0B1F3A] dark:text-slate-200 transition-colors flex items-center space-x-1.5 focus:outline-none focus:ring-1 focus:ring-[#1558A6]"
               >
-                <Menu className="w-5 h-5 text-slate-700 dark:text-slate-200 group-hover:text-slate-950 dark:group-hover:text-white" />
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 hidden sm:inline">
-                  Features
+                <Menu className="w-4 h-4 text-[#0B1F3A] dark:text-slate-200" />
+                <span className="text-xs font-semibold text-[#0B1F3A] dark:text-slate-200 hidden sm:inline tracking-tight">
+                  Modules
                 </span>
               </button>
 
-              {/* Logo & Platform Info */}
-              <div className="flex items-center space-x-2.5">
+              {/* National Emblem / Platform Identity */}
+              <div className="flex items-center space-x-2 sm:space-x-2.5">
                 <img
                   src="/logo.png"
-                  alt="MLPAD Logo"
-                  className="w-10 h-10 object-contain drop-shadow-xs"
+                  alt="Emblem / Platform Logo"
+                  className="w-8 h-8 object-contain shrink-0"
                 />
-                <div>
+                
+                {/* Vertical Divider */}
+                <div className="h-6 w-px bg-[#D9E0E8] dark:bg-slate-700 hidden lg:block" />
+
+                <div className="flex flex-col justify-center">
                   <div className="flex items-center space-x-2">
-                    <span className="font-extrabold text-base tracking-tight text-slate-950 dark:text-white font-sans">
-                      MLPAD
+                    <span className="font-bold text-xs sm:text-sm tracking-tight text-[#0B1F3A] dark:text-white uppercase font-sans whitespace-nowrap">
+                      MPLADS Portal
                     </span>
-                    <span className="bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-200/80 dark:border-indigo-800 uppercase tracking-wide">
+                    <span className="hidden md:inline-block bg-[#1558A6]/10 dark:bg-blue-950/60 text-[#1558A6] dark:text-blue-400 text-[10px] font-semibold px-2 py-0.5 rounded border border-[#1558A6]/20 uppercase tracking-wider whitespace-nowrap">
                       {activeRole.replace('_', ' ')}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap hidden sm:block font-medium">
-                    MPLADS Governance & Accountability Portal
+                  <p className="text-[10px] text-[#5F6F82] dark:text-slate-400 whitespace-nowrap hidden xl:block font-medium leading-none mt-0.5">
+                    MoSPI • Government of India
                   </p>
                 </div>
               </div>
 
             </div>
 
-            {/* CENTER: Active Module Breadcrumb / Badge */}
-            <div className="hidden lg:flex items-center space-x-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 px-3 py-1.5 rounded-xl">
-              <span className="text-[11px] text-slate-400 font-medium">Current Workspace:</span>
-              <div className="flex items-center space-x-1.5 font-bold text-xs text-slate-800 dark:text-slate-200">
-                {React.createElement(currentActiveTabObj.icon, { className: 'w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400' })}
+            {/* CENTER: Active Workspace Pill (Compact & non-wrapping) */}
+            <div className="hidden 2xl:flex items-center space-x-2 bg-[#F5F7FA] dark:bg-slate-800/80 border border-[#D9E0E8] dark:border-slate-700 px-2.5 py-1 rounded-md text-xs">
+              <span className="text-[#5F6F82] dark:text-slate-400 font-medium">Workspace:</span>
+              <div className="flex items-center space-x-1.5 font-semibold text-[#0B1F3A] dark:text-slate-200 whitespace-nowrap">
+                {React.createElement(currentActiveTabObj.icon, { className: 'w-3.5 h-3.5 text-[#1558A6] dark:text-blue-400' })}
                 <span>{currentActiveTabObj.label}</span>
               </div>
             </div>
 
-            {/* RIGHT: Actions & Role Switcher */}
-            <div className="flex items-center space-x-2 shrink-0">
+            {/* RIGHT: System Controls & Profile */}
+            <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
               
               {/* Theme Toggle */}
-              <div className="flex items-center space-x-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-slate-700">
+              <div className="hidden sm:flex items-center space-x-0.5 bg-[#F5F7FA] dark:bg-slate-800 rounded-md p-0.5 border border-[#D9E0E8] dark:border-slate-700">
                 <button 
                   onClick={() => setTheme('light')} 
-                  title="Switch to Light Mode"
-                  className={`p-1.5 rounded-md text-xs transition ${theme === 'light' ? 'bg-white shadow-2xs dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                  title="Light Mode"
+                  className={`p-1.5 rounded text-xs transition ${theme === 'light' ? 'bg-white shadow-xs dark:bg-slate-700 text-[#1558A6] dark:text-blue-400 font-bold' : 'text-[#5F6F82] dark:text-slate-400 hover:text-[#0B1F3A]'}`}
                 >
                   <Sun className="w-3.5 h-3.5" />
                 </button>
                 <button 
                   onClick={() => setTheme('system')} 
                   title="System Preference"
-                  className={`p-1.5 rounded-md text-xs transition ${theme === 'system' ? 'bg-white shadow-2xs dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                  className={`p-1.5 rounded text-xs transition ${theme === 'system' ? 'bg-white shadow-xs dark:bg-slate-700 text-[#1558A6] dark:text-blue-400 font-bold' : 'text-[#5F6F82] dark:text-slate-400 hover:text-[#0B1F3A]'}`}
                 >
                   <Monitor className="w-3.5 h-3.5" />
                 </button>
                 <button 
                   onClick={() => setTheme('dark')} 
-                  title="Switch to Dark Mode"
-                  className={`p-1.5 rounded-md text-xs transition ${theme === 'dark' ? 'bg-white shadow-2xs dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                  title="Dark Mode"
+                  className={`p-1.5 rounded text-xs transition ${theme === 'dark' ? 'bg-white shadow-xs dark:bg-slate-700 text-[#1558A6] dark:text-blue-400 font-bold' : 'text-[#5F6F82] dark:text-slate-400 hover:text-slate-200'}`}
                 >
                   <Moon className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              {/* Authenticated User Profile Pill (Displays who is signed in) */}
-              <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 py-1.5 shadow-2xs">
-                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-[11px] shrink-0">
+              {/* Authenticated Official Identity */}
+              <div className="flex items-center space-x-1.5 sm:space-x-2 bg-[#F5F7FA] dark:bg-slate-800 border border-[#D9E0E8] dark:border-slate-700 rounded-md px-2 py-1">
+                <div className="w-5 h-5 rounded bg-[#0B1F3A] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
                   {activeUserName.charAt(0).toUpperCase()}
                 </div>
-                <div className="flex flex-col min-w-0 pr-1">
-                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate max-w-[120px] sm:max-w-[160px]">
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-[#0B1F3A] dark:text-slate-100 truncate max-w-[90px] sm:max-w-[130px] leading-tight">
                     {activeUserName}
                   </span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-none">
+                  <span className="text-[9px] text-[#5F6F82] dark:text-slate-400 font-medium leading-none">
                     {activeRole.replace('_', ' ')}
                   </span>
                 </div>
@@ -325,20 +340,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={handleResetDemo}
                 disabled={isResetting}
                 title="Reset test modifications to demo benchmark"
-                className="flex items-center space-x-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap shadow-2xs"
+                className="flex items-center space-x-1.5 bg-[#F5F7FA] hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-[#5F6F82] dark:text-slate-300 border border-[#D9E0E8] dark:border-slate-700 px-2 py-1.5 rounded-md text-xs font-semibold transition whitespace-nowrap"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
-                <span className="hidden xl:inline">{isResetting ? 'Resetting...' : 'Reset Demo'}</span>
+                <span className="hidden md:inline">{isResetting ? 'Resetting...' : 'Reset Demo'}</span>
               </button>
 
               {/* Upload Data Button (Admin & DC only) */}
               {['SUPER_ADMIN', 'DISTRICT_COLLECTOR'].includes(activeRole) && (
                 <button
                   onClick={openUploadModal}
-                  className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs transition whitespace-nowrap"
+                  className="flex items-center space-x-1.5 bg-[#1558A6] hover:bg-[#0B1F3A] text-white px-2.5 py-1.5 rounded-md text-xs font-semibold transition whitespace-nowrap shadow-xs"
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Upload Data</span>
+                  <span className="hidden lg:inline">Upload Data</span>
                 </button>
               )}
 
@@ -346,11 +361,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               {onLogout && (
                 <button
                   onClick={onLogout}
-                  title="Sign out to portal homepage"
-                  className="flex items-center space-x-1.5 bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/40 text-slate-700 hover:text-rose-600 dark:text-slate-300 dark:hover:text-rose-300 border border-slate-200 dark:border-slate-700 hover:border-rose-200 dark:hover:border-rose-800 px-2.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap"
+                  title="Sign out of administrative session"
+                  className="flex items-center space-x-1 bg-white hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/40 text-slate-700 hover:text-[#C62828] dark:text-slate-300 dark:hover:text-rose-300 border border-[#D9E0E8] dark:border-slate-700 hover:border-red-300 px-2 py-1.5 rounded-md text-xs font-semibold transition whitespace-nowrap"
                 >
-                  <LogOut className="w-3.5 h-3.5 text-rose-500" />
-                  <span className="hidden sm:inline">Sign Out</span>
+                  <LogOut className="w-3.5 h-3.5 text-[#C62828]" />
+                  <span className="hidden xl:inline">Sign Out</span>
                 </button>
               )}
 
@@ -422,16 +437,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                             key={tab.id}
                             type="button"
                             onClick={() => selectTabAndClose(tab.id)}
-                            className={`w-full text-left p-3 rounded-xl transition-all flex items-start space-x-3 group ${
+                            className={`w-full text-left p-2.5 rounded-md transition-all flex items-start space-x-3 group ${
                               isCurrent
-                                ? 'bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/80 shadow-2xs'
-                                : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-transparent hover:border-slate-200 dark:hover:border-slate-700/60'
+                                ? 'bg-[#1558A6]/10 dark:bg-blue-950/50 border border-[#1558A6]/30 shadow-xs'
+                                : 'hover:bg-[#F5F7FA] dark:hover:bg-slate-800/70 border border-transparent hover:border-[#D9E0E8] dark:hover:border-slate-700'
                             }`}
                           >
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                            <div className={`w-8 h-8 rounded flex items-center justify-center shrink-0 transition-colors ${
                               isCurrent
-                                ? 'bg-emerald-600 text-white shadow-2xs'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 group-hover:text-slate-900 dark:group-hover:text-white'
+                                ? 'bg-[#1558A6] text-white'
+                                : 'bg-[#F5F7FA] dark:bg-slate-800 text-[#5F6F82] dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 group-hover:text-[#0B1F3A] dark:group-hover:text-white'
                             }`}>
                               <IconComponent className="w-4 h-4" />
                             </div>
@@ -439,21 +454,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
                                 <span className={`text-xs font-bold truncate ${
-                                  isCurrent ? 'text-emerald-950 dark:text-emerald-300' : 'text-slate-900 dark:text-white'
+                                  isCurrent ? 'text-[#1558A6] dark:text-blue-300' : 'text-[#0B1F3A] dark:text-white'
                                 }`}>
                                   {tab.label}
                                 </span>
                                 {isCurrent && (
-                                  <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#1558A6] shrink-0" />
                                 )}
                               </div>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5 font-normal leading-snug">
+                              <p className="text-[11px] text-[#5F6F82] dark:text-slate-400 line-clamp-2 mt-0.5 font-normal leading-snug">
                                 {tab.description}
                               </p>
                             </div>
 
                             <ChevronRight className={`w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5 ${
-                              isCurrent ? 'text-emerald-600' : 'text-slate-300 dark:text-slate-600'
+                              isCurrent ? 'text-[#1558A6]' : 'text-slate-300 dark:text-slate-600'
                             }`} />
                           </button>
                         );

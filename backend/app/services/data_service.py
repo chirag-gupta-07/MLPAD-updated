@@ -122,10 +122,27 @@ def get_dataframe() -> pd.DataFrame:
             df_base = pd.read_parquet(DATA_PATH)
         elif FALLBACK_PATH.exists():
             df_base = pd.read_parquet(FALLBACK_PATH)
+        elif (PROJECT_ROOT / "data" / "processed" / "master_works.parquet").exists():
+            df_base = pd.read_parquet(PROJECT_ROOT / "data" / "processed" / "master_works.parquet")
         else:
-            # Fallback to demo
-            demo_path = PROJECT_ROOT / "data" / "demo" / "mplads_demo_dataset.parquet"
-            df_base = pd.read_parquet(demo_path)
+            # Check if Supabase DATABASE_URL is available
+            import os
+            db_url = os.getenv("DATABASE_URL")
+            df_base = None
+            if db_url:
+                try:
+                    import psycopg2
+                    conn = psycopg2.connect(db_url)
+                    df_base = pd.read_sql("SELECT * FROM works", conn)
+                    conn.close()
+                except Exception as e:
+                    logger.warning(f"Could not load works from Supabase: {e}")
+                    df_base = None
+
+            if df_base is None or df_base.empty:
+                # Fallback to demo
+                demo_path = PROJECT_ROOT / "data" / "demo" / "mplads_demo_dataset.parquet"
+                df_base = pd.read_parquet(demo_path)
             
         df_base = _ensure_dataframe_schema(df_base)
         _cached_df = df_base

@@ -8,6 +8,10 @@ import {
 } from 'lucide-react';
 import { CitizenEvidenceModal } from './CitizenEvidenceModal';
 
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return inputs.filter(Boolean).join(' ');
+}
+
 interface WorkDetailModalProps {
   work: any;
   onClose: () => void;
@@ -36,12 +40,29 @@ export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work: initialW
   const [newInspectionRemarks, setNewInspectionRemarks] = useState('');
   const [submittingInspection, setSubmittingInspection] = useState(false);
 
-  // Explanatory Guidance Dialog States
+  // Explanatory Guidance Dialog States & GenAI XAI Telemetry
   const [showWhyFlagged, setShowWhyFlagged] = useState(false);
   const [showWhatToDo, setShowWhatToDo] = useState(false);
+  const [xaiExplanation, setXaiExplanation] = useState<any>(null);
+  const [loadingXai, setLoadingXai] = useState(false);
+
+  const fetchXaiExplanation = async (workId: string) => {
+    if (!workId) return;
+    if (xaiExplanation && xaiExplanation.work_id === workId) return;
+    setLoadingXai(true);
+    try {
+      const res = await axios.get(`/api/projects/${encodeURIComponent(workId)}/explain-flag`);
+      setXaiExplanation({ ...res.data, work_id: workId });
+    } catch (e) {
+      console.warn('Could not load GenAI XAI explanation, using client fallback:', e);
+    } finally {
+      setLoadingXai(false);
+    }
+  };
 
   useEffect(() => {
     setCurrentWork(initialWork);
+    setXaiExplanation(null);
   }, [initialWork]);
 
   const fetchLifecycle = async (workId: string) => {
@@ -503,7 +524,10 @@ export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work: initialW
                 <div className="flex items-center space-x-2 shrink-0 self-end md:self-center">
                   <button
                     type="button"
-                    onClick={() => setShowWhyFlagged(true)}
+                    onClick={() => {
+                      if (currentWork?.work_id) fetchXaiExplanation(currentWork.work_id);
+                      setShowWhyFlagged(true);
+                    }}
                     className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-800 border border-slate-300 hover:bg-slate-50 shadow-sm transition"
                   >
                     <HelpCircle className="w-3.5 h-3.5 text-blue-600" />
@@ -512,7 +536,10 @@ export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work: initialW
 
                   <button
                     type="button"
-                    onClick={() => setShowWhatToDo(true)}
+                    onClick={() => {
+                      if (currentWork?.work_id) fetchXaiExplanation(currentWork.work_id);
+                      setShowWhatToDo(true);
+                    }}
                     className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-sm transition"
                   >
                     <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />
@@ -1544,16 +1571,28 @@ export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work: initialW
           }}
         />
 
-        {/* Why Is This Flagged? Explanatory Modal (Requirements 20, 76) */}
+        {/* Why Is This Flagged? Dynamic GenAI Explainable AI Modal */}
         {showWhyFlagged && (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150 border border-slate-200">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
-                    <HelpCircle className="w-4 h-4" />
+                <div className="flex items-center space-x-2.5">
+                  <div className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center font-bold",
+                    xaiExplanation?.is_flagged
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-emerald-100 text-emerald-700"
+                  )}>
+                    {xaiExplanation?.is_flagged ? <HelpCircle className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
                   </div>
-                  <h4 className="font-bold text-slate-900 text-sm">Why is this project flagged?</h4>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      {xaiExplanation?.is_flagged ? "Why is this project flagged?" : "Project Compliance & Status Review"}
+                    </h4>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      MoSPI XAI Decision-Support Engine • {currentWork?.work_id}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={() => setShowWhyFlagged(false)}
@@ -1563,58 +1602,91 @@ export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work: initialW
                 </button>
               </div>
 
-              <div className="space-y-3 text-xs text-slate-700">
-                <p className="font-semibold text-slate-800">
-                  The decision-support system identified multiple cross-source inconsistencies:
-                </p>
-
-                <div className="space-y-2">
-                  <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2">
-                    <span className="font-bold text-blue-700">1.</span>
-                    <div>
-                      <strong className="text-slate-900 block">Financial vs Physical Execution:</strong>
-                      Financial fund utilization is at {currentWork.sanctioned_amount > 0 ? Math.round(((currentWork.total_expenditure || 0) / currentWork.sanctioned_amount) * 100) : 0}% while ground-verified physical progress is {lifecycleData?.lifecycle?.scope?.verified_completion_pct ?? currentWork.completion_percentage}%.
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2">
-                    <span className="font-bold text-blue-700">2.</span>
-                    <div>
-                      <strong className="text-slate-900 block">Reported vs Verified Progress Gap:</strong>
-                      Contractor reported {lifecycleData?.lifecycle?.scope?.reported_completion_pct ?? currentWork.completion_percentage}% physical execution, but official ground inspection verified {lifecycleData?.lifecycle?.scope?.verified_completion_pct ?? currentWork.completion_percentage}%.
-                    </div>
-                  </div>
-
-                  {lifecycleData?.consistency?.inconsistencies && lifecycleData.consistency.inconsistencies.length > 0 && (
-                    <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2">
-                      <span className="font-bold text-blue-700">3.</span>
-                      <div>
-                        <strong className="text-slate-900 block">Material & Logistics Triangulation:</strong>
-                        {lifecycleData.consistency.inconsistencies[0]?.description || 'Material consumption pace differs from recorded physical asset milestones.'}
-                      </div>
-                    </div>
-                  )}
-
-                  {((lifecycleData?.lifecycle?.complaints?.length || 0) + citizenEvidence.length) > 0 && (
-                    <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2">
-                      <span className="font-bold text-blue-700">4.</span>
-                      <div>
-                        <strong className="text-slate-900 block">Public Signals Corroboration:</strong>
-                        {(lifecycleData?.lifecycle?.complaints?.length || 0) + citizenEvidence.length} citizen report(s) / photos have been submitted regarding this site.
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 text-[11px] space-y-1">
-                  <strong>Statutory Notice:</strong>
-                  <p>
-                    These signals indicate an empirical inconsistency requiring supervisory verification. This automated risk score does NOT establish wrongdoing or fraud.
+              {loadingXai ? (
+                <div className="py-8 flex flex-col items-center justify-center space-y-3">
+                  <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-xs text-slate-500 font-medium animate-pulse">
+                    Synthesizing multi-stream project telemetry with Explainable AI...
                   </p>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-3.5 text-xs text-slate-700">
+                  <div className={cn(
+                    "p-3 rounded-xl border flex items-start space-x-2.5",
+                    xaiExplanation?.is_flagged
+                      ? "bg-amber-50/80 border-amber-200 text-amber-950"
+                      : "bg-emerald-50/80 border-emerald-200 text-emerald-950"
+                  )}>
+                    <Sparkles className={cn(
+                      "w-4 h-4 shrink-0 mt-0.5",
+                      xaiExplanation?.is_flagged ? "text-amber-600" : "text-emerald-600"
+                    )} />
+                    <div>
+                      <strong className="block text-xs font-bold leading-snug">
+                        {xaiExplanation?.headline || (
+                          currentWork.composite_risk_score > 50
+                            ? "Multi-stream inconsistencies detected requiring field verification"
+                            : "Project execution aligns with statutory MoSPI guidelines"
+                        )}
+                      </strong>
+                    </div>
+                  </div>
 
-              <div className="pt-2 flex justify-end">
+                  <div className="space-y-2">
+                    {xaiExplanation?.explanation_points && xaiExplanation.explanation_points.length > 0 ? (
+                      xaiExplanation.explanation_points.map((pt: any, idx: number) => (
+                        <div key={idx} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2">
+                          <span className="w-4 h-4 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <strong className="text-slate-900 block font-semibold">{pt.title}:</strong>
+                            <p className="text-slate-600 mt-0.5 leading-relaxed">{pt.detail}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <>
+                        <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2">
+                          <span className="font-bold text-blue-700">1.</span>
+                          <div>
+                            <strong className="text-slate-900 block">Financial vs Physical Convergence:</strong>
+                            Financial utilization stands at {currentWork.sanctioned_amount > 0 ? Math.round(((currentWork.total_expenditure || 0) / currentWork.sanctioned_amount) * 100) : 0}% with verified physical progress of {lifecycleData?.lifecycle?.scope?.verified_completion_pct ?? currentWork.completion_percentage}%.
+                          </div>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2">
+                          <span className="font-bold text-blue-700">2.</span>
+                          <div>
+                            <strong className="text-slate-900 block">Inspection Audit Record:</strong>
+                            Field verification records align with reported contractor claims without critical variance.
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 text-[11px] space-y-1">
+                    <strong>Statutory Notice:</strong>
+                    <p>
+                      {xaiExplanation?.statutory_notice || 
+                        "These signals indicate empirical indicators for supervisory tracking. Automated risk scores do NOT establish wrongdoing or fraud under MoSPI guidelines."
+                      }
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowWhyFlagged(false);
+                    setShowWhatToDo(true);
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center"
+                >
+                  View Recommended Action Plan →
+                </button>
                 <button
                   onClick={() => setShowWhyFlagged(false)}
                   className="px-4 py-2 bg-slate-900 text-white rounded-lg font-semibold text-xs hover:bg-slate-800 transition"
@@ -1626,16 +1698,21 @@ export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work: initialW
           </div>
         )}
 
-        {/* What Should I Do? Action Plan Modal (Requirements 21, 88) */}
+        {/* What Should I Do? Dynamic GenAI Action Plan Modal */}
         {showWhatToDo && (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150 border border-slate-200">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
                     <CheckSquare className="w-4 h-4" />
                   </div>
-                  <h4 className="font-bold text-slate-900 text-sm">Recommended Action Plan</h4>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm">Recommended Action Plan</h4>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Risk-Tailored SOP Guidance • {currentWork?.work_id}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={() => setShowWhatToDo(false)}
@@ -1645,45 +1722,73 @@ export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work: initialW
                 </button>
               </div>
 
-              <div className="space-y-3 text-xs text-slate-700">
-                <p className="text-slate-600">
-                  Recommended standard operating procedure (SOP) for district monitoring authorities:
-                </p>
+              {loadingXai ? (
+                <div className="py-8 flex flex-col items-center justify-center space-y-3">
+                  <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-xs text-slate-500 font-medium animate-pulse">
+                    Tailoring Standard Operating Procedure with Explainable AI...
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 text-xs text-slate-700">
+                  <p className="text-slate-600">
+                    Recommended standard operating procedure (SOP) tailored to current project risk and completion status:
+                  </p>
 
-                <div className="space-y-2">
-                  <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2.5">
-                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">1</span>
-                    <div>
-                      <strong className="text-slate-900 block">Deploy Field Inspector (Tab 5)</strong>
-                      <span>Schedule an Assistant Engineer to take physical core measurements and verify milestone claims.</span>
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2.5">
-                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">2</span>
-                    <div>
-                      <strong className="text-slate-900 block">Reconcile Material Ledger (Tab 3)</strong>
-                      <span>Verify delivery challans, test certificates, and physical on-site remaining inventory.</span>
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2.5">
-                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">3</span>
-                    <div>
-                      <strong className="text-slate-900 block">Audit Financial Vouchers (Tab 4)</strong>
-                      <span>Match contractor running bills against statutory GFR 10-15% advance benchmarks.</span>
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2.5">
-                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">4</span>
-                    <div>
-                      <strong className="text-slate-900 block">Close Citizen Grievances (Tab 6)</strong>
-                      <span>Verify citizen photos and record supervisory resolution notes.</span>
-                    </div>
+                  <div className="space-y-2">
+                    {xaiExplanation?.recommended_actions && xaiExplanation.recommended_actions.length > 0 ? (
+                      xaiExplanation.recommended_actions.map((act: any, idx: number) => {
+                        const tabTarget = act.tab === 'materials' ? 'materials' :
+                                          act.tab === 'finance' ? 'finance' :
+                                          act.tab === 'inspections' ? 'inspections' :
+                                          act.tab === 'scope' ? 'scope_milestones' : 'inspections';
+                        return (
+                          <div key={idx} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2.5 group hover:bg-slate-100/80 transition">
+                            <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                              {act.step || idx + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <strong className="text-slate-900 block font-semibold">{act.title}</strong>
+                                {act.tab && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowWhatToDo(false);
+                                      setActiveTab(tabTarget as any);
+                                    }}
+                                    className="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold uppercase underline"
+                                  >
+                                    Open Tab →
+                                  </button>
+                                )}
+                              </div>
+                              <p className="text-slate-600 mt-0.5 leading-relaxed">{act.detail}</p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <>
+                        <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2.5">
+                          <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+                          <div>
+                            <strong className="text-slate-900 block">Issue Asset Handover & UC Certificate</strong>
+                            <span>Countersign final Utilisation Certificate (UC) and transfer operational custody.</span>
+                          </div>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-start space-x-2.5">
+                          <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+                          <div>
+                            <strong className="text-slate-900 block">Verify MoSPI Citizen Information Plaque</strong>
+                            <span>Confirm permanent stone plaque stating MPLADS funding details is erected.</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="pt-2 flex items-center justify-between border-t border-slate-100">
                 <button
@@ -1692,7 +1797,7 @@ export const WorkDetailModal: React.FC<WorkDetailModalProps> = ({ work: initialW
                     setShowWhatToDo(false);
                     setActiveTab('inspections');
                   }}
-                  className="px-3.5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-xs hover:bg-emerald-700 transition"
+                  className="px-3.5 py-2 bg-emerald-600 text-white rounded-lg font-bold text-xs hover:bg-emerald-700 transition flex items-center"
                 >
                   Go to Inspection Checklist →
                 </button>

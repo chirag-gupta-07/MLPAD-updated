@@ -143,7 +143,9 @@ def health():
 
 
 @app.post("/api/system/reset-demo")
+@app.post("/api/lifecycle/reset-demo")
 def reset_demo_endpoint():
     """Wipes all test changes and resets to original presentation demo state."""
     result = reset_all_databases_to_demo_state()
     return result
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { 
   Users,
@@ -6,6 +6,7 @@ import {
   Camera,
   MessageSquare,
   CheckCircle,
+  CheckCircle2,
   Clock,
   Layers,
   Search,
@@ -27,7 +28,10 @@ import {
   Flame,
   FileText,
   Award,
-  Sparkles
+  Sparkles,
+  Upload,
+  ImageIcon,
+  Trash2
 } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -121,6 +125,12 @@ export const DevelopmentRequestsPage: React.FC = () => {
   const [formDesc, setFormDesc] = useState('');
   const [formName, setFormName] = useState('');
   const [formContact, setFormContact] = useState('');
+  const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [submittingCitizen, setSubmittingCitizen] = useState(false);
   const [submissionResult, setSubmissionResult] = useState<any | null>(null);
   const [feasibilityFeedback, setFeasibilityFeedback] = useState<any | null>(null);
@@ -222,19 +232,83 @@ export const DevelopmentRequestsPage: React.FC = () => {
     }
   };
 
+  const processSelectedPhoto = (file: File) => {
+    setPhotoError(null);
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setPhotoError('Please upload a valid image file (JPEG, PNG, or WebP).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError('Image size exceeds 5MB limit. Please choose a smaller photo.');
+      return;
+    }
+    setSelectedPhotoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPhotoPreviewUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePhotoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      processSelectedPhoto(e.target.files[0]);
+    }
+  };
+
+  const handlePhotoDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processSelectedPhoto(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleRemovePhoto = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedPhotoFile(null);
+    setPhotoPreviewUrl(null);
+    setPhotoError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleCitizenSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const errors: { [key: string]: string } = {};
+    if (!formLocation.trim()) {
+      errors.location = 'Location description (Village / Ward / Landmark) is required.';
+    }
+    if (!formDesc.trim()) {
+      errors.desc = 'Problem description and specific infrastructure need is required.';
+    } else if (formDesc.trim().length < 15) {
+      errors.desc = 'Please provide at least 15 characters detailing the community need.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    setFormErrors({});
+
     setSubmittingCitizen(true);
     try {
-      const res = await axios.post('/api/development-requests/', {
+      const payload: any = {
         category: formCategory,
-        location_description: formLocation,
-        description: formDesc,
+        location_description: formLocation.trim(),
+        description: formDesc.trim(),
         citizen_name: formName.trim() ? formName.trim() : 'Anonymous Citizen',
         citizen_contact: formContact.trim() ? formContact.trim() : undefined,
         latitude: 25.3176 + (Math.random() - 0.5) * 0.04,
         longitude: 82.9739 + (Math.random() - 0.5) * 0.04
-      });
+      };
+
+      if (photoPreviewUrl) {
+        payload.photo_path = photoPreviewUrl.slice(0, 1000);
+      }
+
+      const res = await axios.post('/api/development-requests/', payload);
 
       setSubmissionResult(res.data);
     } catch (e: any) {
@@ -321,31 +395,31 @@ export const DevelopmentRequestsPage: React.FC = () => {
     <div className="space-y-6">
       
       {/* Header & View Mode Switcher */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 p-5 md:p-6 rounded-xl border border-[#D9E1EA] dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex flex-wrap items-center gap-2 mb-1">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Users className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+            <h2 className="text-xl font-bold text-[#0B1F3A] dark:text-slate-100 flex items-center gap-2 tracking-tight">
+              <Users className="w-5 h-5 text-[#138A5B]" />
               Jan Samwaad: Public Requests & Citizen Demands
             </h2>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 uppercase tracking-wider">
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ECFDF5] text-[#138A5B] dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 uppercase tracking-wider">
               Unified Citizen & Public Voice
             </span>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            One unified portal for citizens to submit infrastructure needs, cluster recurring local demands, and enable Hon'ble MPs to issue official Recommendation Notices.
+          <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
+            Direct public channel for citizens to register unfulfilled infrastructure needs, cluster recurring local demands, and assist the Hon'ble Member of Parliament in issuing official Recommendation Notices.
           </p>
         </div>
 
         {/* Mode Toggle */}
-        <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 self-start md:self-auto">
+        <div className="inline-flex bg-[#F1F5F9] dark:bg-slate-800 p-1 rounded-xl border border-[#D9E1EA] dark:border-slate-700 self-start md:self-auto shadow-inner">
           <button 
             onClick={() => setViewMode('citizen')}
             className={cn(
-              "px-4 py-2 text-xs font-semibold rounded-lg transition",
+              "px-4 py-2 text-xs font-semibold rounded-lg transition-all",
               viewMode === 'citizen' 
-                ? "bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-300 shadow-sm" 
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                ? "bg-white dark:bg-slate-700 text-[#138A5B] dark:text-emerald-400 shadow-sm" 
+                : "text-slate-600 dark:text-slate-400 hover:text-[#0B1F3A] dark:hover:text-white"
             )}
           >
             Citizen Demand Portal
@@ -353,10 +427,10 @@ export const DevelopmentRequestsPage: React.FC = () => {
           <button 
             onClick={() => setViewMode('official')}
             className={cn(
-              "px-4 py-2 text-xs font-semibold rounded-lg transition",
+              "px-4 py-2 text-xs font-semibold rounded-lg transition-all",
               viewMode === 'official' 
-                ? "bg-white dark:bg-slate-700 text-brand-600 dark:text-brand-300 shadow-sm" 
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                ? "bg-white dark:bg-slate-700 text-[#0B1F3A] dark:text-slate-100 shadow-sm" 
+                : "text-slate-600 dark:text-slate-400 hover:text-[#0B1F3A] dark:hover:text-white"
             )}
           >
             Official Decision Cockpit
@@ -375,64 +449,97 @@ export const DevelopmentRequestsPage: React.FC = () => {
           MODE 1: CITIZEN DEMAND PORTAL (Feature 8)
           ========================================================================= */}
       {viewMode === 'citizen' ? (
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+        <div className="max-w-[640px] mx-auto py-2">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-[#D9E1EA] dark:border-slate-800 overflow-hidden">
             
-            {/* Citizen Banner */}
-            <div className="bg-gradient-to-r from-brand-600 to-brand-700 p-6 text-white text-center">
-              <h3 className="text-2xl font-bold tracking-tight">WHAT DOES YOUR AREA NEED?</h3>
-              <p className="text-brand-100 text-xs md:text-sm mt-1.5 max-w-md mx-auto">
+            {/* Citizen Banner: Solid Government Green */}
+            <div className="bg-[#138A5B] p-6 text-white text-center">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 mb-2 border border-white/20">
+                <Users className="w-5 h-5 text-white" />
+              </div>
+              <h3 className="text-xl md:text-2xl font-black tracking-wide uppercase">WHAT DOES YOUR AREA NEED?</h3>
+              <p className="text-emerald-50 text-xs md:text-sm mt-1 max-w-lg mx-auto font-medium">
                 Report missing or required community infrastructure directly to the Member of Parliament and District Planning Cell.
               </p>
             </div>
 
-            {/* Distinction Reminder */}
-            <div className="px-6 py-3 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 text-amber-600" />
-              <span>
-                <strong>Important:</strong> This module is for <em>missing infrastructure or new facilities</em>. For issues on ongoing projects, please use Citizen Evidence.
+            {/* Distinction Reminder: Saffron Strip */}
+            <div className="px-5 py-3 bg-[#FFFBEB] dark:bg-amber-950/30 border-b border-[#FDE68A] dark:border-amber-900/40 text-xs text-[#92400E] dark:text-amber-300 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-[#D88900] mt-0.5" />
+              <span className="leading-relaxed">
+                <strong>Important:</strong> This module is strictly for <em>missing infrastructure or new public facilities</em>. For grievances or issues on ongoing works, please use <strong>Citizen Evidence</strong>.
               </span>
             </div>
 
             {submissionResult ? (
-              <div className="p-8 text-center space-y-4">
+              <div className="p-8 text-center space-y-5">
                 {submissionResult.status === 'REJECTED' || submissionResult.is_feasible === false ? (
                   <>
-                    <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto">
+                    <div className="w-16 h-16 bg-rose-50 dark:bg-rose-950/40 text-rose-600 rounded-full flex items-center justify-center mx-auto border border-rose-200 dark:border-rose-900/60 shadow-sm">
                       <X className="w-8 h-8" />
                     </div>
-                    <h4 className="text-xl font-bold text-rose-600 dark:text-rose-400">
-                      Request Ineligible & Rejected
-                    </h4>
-                    <div className="p-4 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-900/60 max-w-sm mx-auto text-left text-xs space-y-1.5">
-                      <div><strong>Reference ID:</strong> <span className="font-mono font-bold text-rose-700 dark:text-rose-300">{submissionResult.request_id}</span></div>
-                      <div><strong>Status:</strong> <span className="font-semibold text-rose-600">REJECTED / INELIGIBLE</span></div>
-                      <div className="text-rose-800 dark:text-rose-200 text-[11px] pt-1.5 border-t border-rose-200 dark:border-rose-800 leading-relaxed">
-                        <strong>AI Statutory Gate:</strong> {submissionResult.feasibility?.violates_para || 'Para 4.5 Negative List Violation'}
+                    <div className="space-y-1">
+                      <h4 className="text-lg font-bold text-rose-700 dark:text-rose-400">
+                        Request Ineligible Under Statutory Guidelines
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        The submitted proposal cannot be funded under official MPLADS guidelines.
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-[#F8FAFC] dark:bg-slate-800/80 rounded-lg border border-[#D9E1EA] dark:border-slate-700 max-w-md mx-auto text-left text-xs space-y-2.5">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
+                        <span className="text-slate-500 font-medium">Reference ID:</span>
+                        <span className="font-mono font-bold text-[#0B1F3A] dark:text-slate-200">{submissionResult.request_id}</span>
                       </div>
-                      <div className="text-rose-700 dark:text-rose-300 text-[10px]">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
+                        <span className="text-slate-500 font-medium">Status:</span>
+                        <span className="font-semibold text-rose-600 uppercase text-[11px] bg-rose-50 dark:bg-rose-950 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-800">Rejected / Ineligible</span>
+                      </div>
+                      <div className="text-rose-800 dark:text-rose-200 text-xs leading-relaxed bg-rose-50 dark:bg-rose-950/40 p-3 rounded-md border border-rose-200/80 dark:border-rose-900/40">
+                        <strong className="block text-rose-900 dark:text-rose-100 font-semibold mb-1">
+                          AI Statutory Gate: {submissionResult.feasibility?.violates_para || 'Para 4.5 Negative List Violation'}
+                        </strong>
                         {submissionResult.feasibility?.warning}
                       </div>
                       {submissionResult.feasibility?.suggestion && (
-                        <div className="text-slate-600 dark:text-slate-400 text-[10px] italic pt-1 border-t border-rose-100 dark:border-rose-900">
-                          Tip: {submissionResult.feasibility.suggestion}
+                        <div className="text-slate-700 dark:text-slate-300 text-[11px] bg-amber-50/60 dark:bg-amber-950/20 p-2.5 rounded border border-amber-200/60 text-left">
+                          💡 <strong>Statutory Advice:</strong> {submissionResult.feasibility.suggestion}
                         </div>
                       )}
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto">
-                      <CheckCircle className="w-8 h-8" />
+                    <div className="w-16 h-16 bg-[#ECFDF5] dark:bg-emerald-950/50 text-[#138A5B] rounded-full flex items-center justify-center mx-auto border border-emerald-200 dark:border-emerald-800/60 shadow-sm">
+                      <CheckCircle2 className="w-8 h-8" />
                     </div>
-                    <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                      Development Need Registered!
-                    </h4>
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 max-w-sm mx-auto text-left text-xs space-y-1.5">
-                      <div><strong>Reference ID:</strong> <span className="font-mono font-bold text-brand-600 dark:text-brand-400">{submissionResult.request_id}</span></div>
-                      <div><strong>Status:</strong> <span className="font-semibold text-emerald-600">{submissionResult.status}</span></div>
-                      <div className="text-slate-500 text-[11px] pt-1 border-t border-slate-200 dark:border-slate-700">
-                        Your request has been routed to the District Scrutiny Engine for geospatial clustering and existing project matching.
+                    <div className="space-y-1">
+                      <h4 className="text-lg font-bold text-[#0B1F3A] dark:text-slate-100">
+                        Development Need Registered Successfully!
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Your demand has entered the official district geospatial scrutiny pipeline.
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-[#F8FAFC] dark:bg-slate-800/80 rounded-lg border border-[#D9E1EA] dark:border-slate-700 max-w-md mx-auto text-left text-xs space-y-2.5">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
+                        <span className="text-slate-500 font-medium">Tracking Reference:</span>
+                        <span className="font-mono font-bold text-[#138A5B]">{submissionResult.request_id}</span>
+                      </div>
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
+                        <span className="text-slate-500 font-medium">Initial Status:</span>
+                        <span className="font-bold text-[#138A5B] bg-[#ECFDF5] px-2 py-0.5 rounded border border-emerald-200 text-[11px]">{submissionResult.status || 'SUBMITTED'}</span>
+                      </div>
+                      {submissionResult.category && (
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
+                          <span className="text-slate-500 font-medium">Category:</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">{submissionResult.category}</span>
+                        </div>
+                      )}
+                      <div className="text-slate-600 dark:text-slate-400 text-[11px] pt-1 leading-relaxed">
+                        Your request has been routed to the District Scrutiny Engine for geospatial demand clustering, saturation indexing, and nearby project matching.
                       </div>
                     </div>
                   </>
@@ -445,43 +552,53 @@ export const DevelopmentRequestsPage: React.FC = () => {
                     setFormLocation('');
                     setFormName('');
                     setFormContact('');
+                    setSelectedPhotoFile(null);
+                    setPhotoPreviewUrl(null);
+                    setPhotoError(null);
+                    setFormErrors({});
                   }} 
-                  className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg transition"
+                  className="px-6 py-2.5 bg-[#138A5B] hover:bg-[#0e6d47] text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
                 >
                   Submit Another Need
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleCitizenSubmit} className="p-6 space-y-5 text-xs">
+              <form onSubmit={handleCitizenSubmit} className="p-6 md:p-8 space-y-6 text-xs">
                 
                 {/* 1. Category Selection */}
                 <div>
-                  <label className="block font-bold text-slate-800 dark:text-slate-200 mb-2">
-                    1. Select Infrastructure Category <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block font-bold text-[#0B1F3A] dark:text-slate-200">
+                      1. Select Infrastructure Category <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[11px] text-slate-400">MoSPI Standard Categories</span>
+                  </div>
                   <div className="flex flex-wrap gap-2">
-                    {categories.map(cat => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setFormCategory(cat)}
-                        className={cn(
-                          "px-3.5 py-2 rounded-full text-xs font-medium border transition-colors",
-                          formCategory === cat
-                            ? "bg-brand-50 dark:bg-brand-900/30 border-brand-500 text-brand-700 dark:text-brand-300 font-semibold shadow-sm"
-                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50"
-                        )}
-                      >
-                        {cat}
-                      </button>
-                    ))}
+                    {categories.map(cat => {
+                      const isSelected = formCategory === cat;
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setFormCategory(cat)}
+                          className={cn(
+                            "px-3.5 py-2 rounded-full text-xs font-semibold border transition-all",
+                            isSelected
+                              ? "bg-[#138A5B] border-[#138A5B] text-white shadow-sm"
+                              : "bg-white dark:bg-slate-800 border-[#D9E1EA] dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                          )}
+                        >
+                          {cat}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* 2. Location */}
                 <div>
-                  <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
-                    2. Location Description (Village / Ward / Landmark) <span className="text-red-500">*</span>
+                  <label className="block font-bold text-[#0B1F3A] dark:text-slate-200 mb-1.5">
+                    2. Location Description (Village / Ward / Landmark) <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
                     <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -490,68 +607,164 @@ export const DevelopmentRequestsPage: React.FC = () => {
                       required
                       placeholder="e.g., Ward 7, Rampur Village, Near Primary Health Post"
                       value={formLocation}
-                      onChange={e => setFormLocation(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-brand-500"
+                      onChange={e => {
+                        setFormLocation(e.target.value);
+                        if (formErrors.location) {
+                          setFormErrors({ ...formErrors, location: '' });
+                        }
+                      }}
+                      className={cn(
+                        "w-full pl-9 pr-3 py-2.5 bg-[#F8FAFC] dark:bg-slate-800/80 border rounded-lg text-xs text-[#0B1F3A] dark:text-slate-100 outline-none transition-all placeholder:text-slate-400",
+                        formErrors.location
+                          ? "border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                          : "border-[#D9E1EA] dark:border-slate-700 focus:border-[#138A5B] focus:ring-1 focus:ring-[#138A5B]"
+                      )}
                     />
                   </div>
+                  {formErrors.location && (
+                    <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                      <span>{formErrors.location}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* 3. Problem Description */}
                 <div>
-                  <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
-                    3. Describe the Problem & Specific Need <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block font-bold text-[#0B1F3A] dark:text-slate-200">
+                      3. Describe the Problem & Specific Need <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400">Min 15 chars</span>
+                  </div>
                   <textarea
                     required
                     rows={4}
                     placeholder="Describe what is missing, how many residents are affected, and what kind of facility is requested..."
                     value={formDesc}
-                    onChange={e => setFormDesc(e.target.value)}
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-brand-500"
+                    onChange={e => {
+                      setFormDesc(e.target.value);
+                      if (formErrors.desc) {
+                        setFormErrors({ ...formErrors, desc: '' });
+                      }
+                    }}
+                    className={cn(
+                      "w-full p-3 bg-[#F8FAFC] dark:bg-slate-800/80 border rounded-lg text-xs text-[#0B1F3A] dark:text-slate-100 outline-none transition-all placeholder:text-slate-400 resize-none leading-relaxed",
+                      formErrors.desc
+                        ? "border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                        : "border-[#D9E1EA] dark:border-slate-700 focus:border-[#138A5B] focus:ring-1 focus:ring-[#138A5B]"
+                    )}
                   />
+                  {formErrors.desc && (
+                    <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                      <span>{formErrors.desc}</span>
+                    </p>
+                  )}
+
                   {/* Live Statutory Pre-Check Feedback (Para 4.5 MPLADS Guidelines) */}
                   {feasibilityFeedback && (
-                    <div className="mt-2 animate-in fade-in">
+                    <div className="mt-2.5 animate-in fade-in">
                       {!feasibilityFeedback.is_feasible ? (
-                        <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 rounded-lg text-[11px] text-red-800 dark:text-red-300 space-y-1">
+                        <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 rounded-lg text-[11px] text-red-800 dark:text-red-300 space-y-1 shadow-sm">
                           <div className="font-bold flex items-center gap-1.5 text-red-700 dark:text-red-400">
                             <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                             <span>Statutory Guideline Alert: Prohibited Under MPLADS</span>
                           </div>
-                          <p>{feasibilityFeedback.warning}</p>
+                          <p className="leading-relaxed">{feasibilityFeedback.warning}</p>
                           {feasibilityFeedback.suggestion && (
-                            <p className="text-red-600 dark:text-red-400/90 font-medium">
+                            <p className="text-red-600 dark:text-red-400/90 font-medium pt-1 border-t border-red-200/60 dark:border-red-900/60">
                               💡 <strong>Compliant Alternative:</strong> {feasibilityFeedback.suggestion}
                             </p>
                           )}
                         </div>
                       ) : (
-                        <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[11px] text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                          <span>{feasibilityFeedback.suggestion}</span>
+                        <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-[11px] text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                          <span>{feasibilityFeedback.suggestion || 'Statutory review: Proposal complies with Para 4.1 allowable works.'}</span>
                         </div>
                       )}
                     </div>
                   )}
                 </div>
 
-                {/* 4. Optional Photo Upload */}
+                {/* 4. Photo Upload with Drag and Drop & Preview */}
                 <div>
-                  <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+                  <label className="block font-bold text-[#0B1F3A] dark:text-slate-200 mb-1.5">
                     4. Photograph of Ground Reality (Optional)
                   </label>
-                  <div 
-                    onClick={() => alert("Photo selection dialog: Attach geotagged site photo.")}
-                    className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-5 flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition"
-                  >
-                    <Camera className="w-6 h-6 mb-1 text-slate-400" />
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">Click to upload photo of site</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">JPEG or PNG under 5MB</span>
-                  </div>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handlePhotoFileChange} 
+                    accept="image/jpeg,image/png,image/webp" 
+                    className="hidden" 
+                  />
+
+                  {photoPreviewUrl ? (
+                    <div className="relative rounded-xl border border-[#D9E1EA] dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 p-3 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={photoPreviewUrl} 
+                          alt="Uploaded Preview" 
+                          className="w-16 h-16 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm"
+                        />
+                        <div className="space-y-0.5">
+                          <div className="font-semibold text-slate-800 dark:text-slate-200 text-xs truncate max-w-[220px]">
+                            {selectedPhotoFile?.name || 'Attached site photograph'}
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            {selectedPhotoFile ? `${(selectedPhotoFile.size / 1024).toFixed(1)} KB` : 'Ready for verification'}
+                          </div>
+                          <div className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Image attached
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors"
+                        title="Remove photo"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={handlePhotoDrop}
+                      className={cn(
+                        "border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all text-center",
+                        isDragging 
+                          ? "border-[#138A5B] bg-emerald-50/50 dark:bg-emerald-950/20" 
+                          : "border-slate-300 dark:border-slate-700 hover:border-[#138A5B] hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
+                      )}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-2 text-slate-500">
+                        <Upload className="w-5 h-5 text-slate-400" />
+                      </div>
+                      <span className="font-bold text-[#0B1F3A] dark:text-slate-200 text-xs">
+                        Click or drag photograph here
+                      </span>
+                      <span className="text-[10px] text-slate-400 mt-0.5">
+                        Supports JPEG, PNG, or WebP up to 5MB
+                      </span>
+                    </div>
+                  )}
+
+                  {photoError && (
+                    <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                      <span>{photoError}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* 5. Citizen Details (Optional) */}
-                <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div>
                     <label className="block font-medium text-slate-600 dark:text-slate-400 mb-1">
                       Your Name (Optional)
@@ -561,7 +774,7 @@ export const DevelopmentRequestsPage: React.FC = () => {
                       placeholder="e.g. Ramesh Chandra"
                       value={formName}
                       onChange={e => setFormName(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-brand-500"
+                      className="w-full px-3 py-2 bg-[#F8FAFC] dark:bg-slate-800/80 border border-[#D9E1EA] dark:border-slate-700 rounded-lg text-xs text-[#0B1F3A] dark:text-slate-100 outline-none focus:border-[#138A5B] focus:ring-1 focus:ring-[#138A5B] transition-all placeholder:text-slate-400"
                     />
                   </div>
                   <div>
@@ -573,23 +786,31 @@ export const DevelopmentRequestsPage: React.FC = () => {
                       placeholder="e.g. 9876543210"
                       value={formContact}
                       onChange={e => setFormContact(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-brand-500"
+                      className="w-full px-3 py-2 bg-[#F8FAFC] dark:bg-slate-800/80 border border-[#D9E1EA] dark:border-slate-700 rounded-lg text-xs text-[#0B1F3A] dark:text-slate-100 outline-none focus:border-[#138A5B] focus:ring-1 focus:ring-[#138A5B] transition-all placeholder:text-slate-400"
                     />
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={submittingCitizen}
-                  className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50"
-                >
-                  {submittingCitizen ? <span>Registering Need...</span> : (
-                    <>
-                      <Send className="w-4 h-4" />
-                      <span>Submit Development Need</span>
-                    </>
-                  )}
-                </button>
+                {/* Submit Action */}
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={submittingCitizen}
+                    className="w-full py-3 bg-[#138A5B] hover:bg-[#0e6d47] text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 tracking-wide"
+                  >
+                    {submittingCitizen ? (
+                      <span>Registering Need with District Cell...</span>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        <span>Submit Development Need</span>
+                      </>
+                    )}
+                  </button>
+                  <p className="text-[10px] text-center text-slate-400 mt-2">
+                    Submissions are logged into the public MPLADS audit registry and aggregated into local consensus clusters.
+                  </p>
+                </div>
 
               </form>
             )}

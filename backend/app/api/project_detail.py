@@ -101,3 +101,14 @@ async def get_operations_summary(project_id: str) -> Dict[str, Any]:
         "approval_status": project_approval["current_status"] if project_approval else "UNKNOWN",
         "development_requests_count": len(project_reqs)
     }
+
+
+@router.get("/{project_id:path}/explain-flag")
+@router.post("/{project_id:path}/explain-flag")
+async def get_project_explain_flag(project_id: str) -> Dict[str, Any]:
+    """
+    Dynamic GenAI Explainable AI (XAI) endpoint.
+    Synthesizes why a project is flagged (or compliant) and returns a targeted SOP action plan.
+    """
+    from backend.app.services.xai_service import get_project_xai_explanation
+    return get_project_xai_explanation(project_id)

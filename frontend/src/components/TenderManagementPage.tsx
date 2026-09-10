@@ -210,26 +210,31 @@ export const TenderManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+      {/* Top Banner: Government of India Institutional Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-xl border border-[#D9E1EA] dark:border-slate-800 shadow-sm">
         <div>
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-lg bg-indigo-600 text-white shadow-sm">
-              <Gavel className="w-6 h-6" />
+            <div className="p-2.5 rounded-lg bg-[#0B1F3A] text-white shadow-sm border border-[#1558A6]/20">
+              <Gavel className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">E-Procurement & Tender Management</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                GFR 2017 & CVC Compliant Two-Envelope Bidding · AI Cartel Detection · Automated L1 Awarding
+              <div className="flex items-center space-x-2">
+                <h1 className="text-xl font-bold text-[#0B1F3A] dark:text-white tracking-tight">E-Procurement & Tender Management</h1>
+                <span className="bg-[#138A5B]/10 dark:bg-emerald-950 text-[#138A5B] dark:text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 uppercase tracking-wider">
+                  CVC & GFR 2017
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                Statutory Two-Envelope E-Bidding · AI Cartel & Collusion Screening · Automated Lowest Responsive (L1) Awarding
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2.5">
           <button
             onClick={fetchTenders}
-            className="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center space-x-1.5 transition-colors"
+            className="px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center space-x-1.5 transition-colors border border-[#D9E1EA] dark:border-slate-700"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -240,7 +245,7 @@ export const TenderManagementPage: React.FC = () => {
               fetchEligibleWorks();
               setShowCreateModal(true);
             }}
-            className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm flex items-center space-x-1.5 transition-colors"
+            className="px-4 py-2 text-xs font-bold text-white bg-[#138A5B] rounded-lg hover:bg-[#0e6d47] shadow-sm flex items-center space-x-1.5 transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Publish NIT Tender</span>
@@ -308,21 +313,21 @@ export const TenderManagementPage: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white dark:bg-slate-900 max-w-4xl w-full rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
             {/* Header */}
-            <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-start bg-slate-50/50 dark:bg-slate-800/50">
+            <div className="p-5 sm:p-6 border-b border-[#D9E1EA] dark:border-slate-800 flex justify-between items-start bg-[#F8FAFC] dark:bg-slate-800/50">
               <div>
-                <div className="flex items-center space-x-2 mb-1">
-                  <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                <div className="flex items-center space-x-2 mb-1.5">
+                  <span className="text-xs font-mono font-bold text-[#1558A6] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800">
                     {selectedTender.tender.id}
                   </span>
-                  <span className="text-xs text-slate-500">· {selectedTender.tender.department}</span>
+                  <span className="text-xs text-slate-500 font-medium">· {selectedTender.tender.department}</span>
                 </div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                <h2 className="text-lg font-bold text-[#0B1F3A] dark:text-white tracking-tight">
                   {selectedTender.tender.title}
                 </h2>
               </div>
               <button
                 onClick={() => setSelectedTender(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -331,28 +336,34 @@ export const TenderManagementPage: React.FC = () => {
             {/* Content Body */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm">
               {/* Key Specs */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-[#F8FAFC] dark:bg-slate-800/60 border border-[#D9E1EA] dark:border-slate-700/80">
                 <div>
-                  <span className="text-[11px] text-slate-500 block">Estimated Cost</span>
-                  <span className="font-bold text-slate-900 dark:text-white text-base">
+                  <span className="text-[11px] text-slate-500 font-medium block">Estimated Cost</span>
+                  <span className="font-bold text-[#0B1F3A] dark:text-white text-base font-mono">
                     {formatLakhs(selectedTender.tender.estimated_cost)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[11px] text-slate-500 block">Required EMD</span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400 text-base">
+                  <span className="text-[11px] text-slate-500 font-medium block">Required EMD (2%)</span>
+                  <span className="font-bold text-[#138A5B] dark:text-emerald-400 text-base font-mono">
                     {formatLakhs(selectedTender.tender.emd_amount)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[11px] text-slate-500 block">Contractor Class</span>
-                  <span className="font-bold text-indigo-600 dark:text-indigo-400 text-base">
+                  <span className="text-[11px] text-slate-500 font-medium block">Contractor Class</span>
+                  <span className="font-bold text-[#1558A6] dark:text-blue-400 text-base">
                     {selectedTender.tender.minimum_contractor_class}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[11px] text-slate-500 block">Status</span>
-                  <span className="font-bold uppercase tracking-wider text-xs">
+                  <span className="text-[11px] text-slate-500 font-medium block">Status</span>
+                  <span className={`font-bold uppercase tracking-wider text-xs px-2 py-0.5 rounded inline-block mt-0.5 ${
+                    selectedTender.tender.status === 'AWARDED'
+                      ? 'bg-emerald-100 text-[#138A5B] dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                      : selectedTender.tender.status === 'EVALUATING'
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                      : 'bg-blue-100 text-[#1558A6] dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                  }`}>
                     {selectedTender.tender.status}
                   </span>
                 </div>
@@ -388,28 +399,33 @@ export const TenderManagementPage: React.FC = () => {
 
               {/* Two-Envelope Submitted Bids Table */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-                    <Users className="w-4 h-4 text-indigo-600" />
-                    <span>Submitted Two-Envelope Bids ({selectedTender.bids.length})</span>
-                  </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="font-bold text-[#0B1F3A] dark:text-white flex items-center space-x-2 text-sm">
+                      <Users className="w-4 h-4 text-[#1558A6]" />
+                      <span>Submitted Two-Envelope Bids ({selectedTender.bids.length})</span>
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Technical envelopes verified via AI document scrutiny; financial quotes ranked upon unsealing.
+                    </p>
+                  </div>
 
                   {selectedTender.tender.status !== 'AWARDED' && (
                     <button
                       onClick={() => handleRunAiEvaluation(selectedTender.tender.id)}
                       disabled={evaluating || selectedTender.bids.length === 0}
-                      className="px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm flex items-center space-x-1.5 disabled:opacity-50 transition-colors"
+                      className="px-4 py-2 text-xs font-bold text-white bg-[#0B1F3A] hover:bg-[#1558A6] rounded-lg shadow-sm flex items-center space-x-2 disabled:opacity-50 transition-all self-start sm:self-auto border border-[#0B1F3A]"
                     >
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>{evaluating ? 'Analyzing...' : 'Run AI Scrutiny & Unseal Quotes'}</span>
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <span>{evaluating ? 'Analyzing & Unsealing...' : 'Run AI Scrutiny & Unseal Quotes'}</span>
                     </button>
                   )}
                 </div>
 
-                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                <div className="border border-[#D9E1EA] dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
+                      <tr className="bg-[#F8FAFC] dark:bg-slate-800/80 text-[#0B1F3A] dark:text-slate-300 border-b border-[#D9E1EA] dark:border-slate-700 font-semibold">
                         <th className="p-3">Rank / Bid ID</th>
                         <th className="p-3">Contractor / Vendor</th>
                         <th className="p-3">Technical Score</th>
@@ -419,7 +435,7 @@ export const TenderManagementPage: React.FC = () => {
                         <th className="p-3 text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    <tbody className="divide-y divide-[#D9E1EA] dark:divide-slate-800">
                       {selectedTender.bids.map((b: any) => {
                         const isL1 = b.financial_rank === 'L1';
                         return (
@@ -427,7 +443,7 @@ export const TenderManagementPage: React.FC = () => {
                             key={b.id}
                             className={`transition-colors ${
                               isL1
-                                ? 'bg-emerald-50/70 dark:bg-emerald-950/30 font-semibold'
+                                ? 'bg-emerald-50/80 dark:bg-emerald-950/30 font-semibold'
                                 : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                             }`}
                           >
@@ -435,7 +451,7 @@ export const TenderManagementPage: React.FC = () => {
                               {b.financial_rank ? (
                                 <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
                                   isL1
-                                    ? 'bg-emerald-600 text-white'
+                                    ? 'bg-[#138A5B] text-white'
                                     : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                                 }`}>
                                   {b.financial_rank}
@@ -444,30 +460,30 @@ export const TenderManagementPage: React.FC = () => {
                                 <span className="font-mono text-slate-500">{b.id}</span>
                               )}
                             </td>
-                            <td className="p-3 font-medium text-slate-900 dark:text-white">
+                            <td className="p-3 font-medium text-[#0B1F3A] dark:text-white">
                               {b.firm_name}
                               {isL1 && (
-                                <span className="ml-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase">
+                                <span className="ml-2 text-[10px] text-[#138A5B] dark:text-emerald-400 font-bold uppercase tracking-tight">
                                   ★ Lowest Responsive (L1)
                                 </span>
                               )}
                             </td>
                             <td className="p-3">
-                              <span className="font-bold text-slate-700 dark:text-slate-300">
+                              <span className="font-bold text-slate-800 dark:text-slate-200">
                                 {b.technical_score}/100
                               </span>
                             </td>
                             <td className="p-3">
-                              <span className="text-emerald-600 dark:text-emerald-400 font-medium">✓ Paid</span>
+                              <span className="text-[#138A5B] dark:text-emerald-400 font-semibold">✓ Paid</span>
                             </td>
-                            <td className="p-3 font-mono font-bold">
+                            <td className="p-3 font-mono font-bold text-slate-900 dark:text-slate-100">
                               {typeof b.quoted_amount === 'number'
                                 ? formatLakhs(b.quoted_amount)
                                 : <span className="text-slate-400 italic font-normal">🔒 Sealed in Envelope</span>}
                             </td>
                             <td className="p-3 font-mono text-[11px]">
                               {typeof b.quoted_amount === 'number' ? (
-                                <span className={b.quoted_amount <= selectedTender.tender.estimated_cost ? 'text-emerald-600' : 'text-rose-600'}>
+                                <span className={b.quoted_amount <= selectedTender.tender.estimated_cost ? 'text-[#138A5B] font-semibold' : 'text-rose-600 font-semibold'}>
                                   {(((b.quoted_amount - selectedTender.tender.estimated_cost) / selectedTender.tender.estimated_cost) * 100).toFixed(1)}%
                                 </span>
                               ) : '—'}
@@ -476,10 +492,10 @@ export const TenderManagementPage: React.FC = () => {
                               <div className="flex items-center justify-end space-x-2">
                                 <button
                                   onClick={() => handleOpenDocScrutiny(b, selectedTender.tender)}
-                                  className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 rounded text-[11px] font-semibold flex items-center space-x-1 transition-colors"
+                                  className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 rounded text-[11px] font-semibold flex items-center space-x-1 transition-colors"
                                   title="Inspect technical eligibility documents with AI"
                                 >
-                                  <FileCheck className="w-3 h-3 text-indigo-600" />
+                                  <FileCheck className="w-3.5 h-3.5 text-indigo-600" />
                                   <span>AI Scrutiny</span>
                                 </button>
 
@@ -487,13 +503,16 @@ export const TenderManagementPage: React.FC = () => {
                                   <button
                                     onClick={() => handleAwardL1(selectedTender.tender.id)}
                                     disabled={awarding}
-                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold shadow-sm transition-colors"
+                                    className="px-3 py-1.5 bg-[#138A5B] hover:bg-[#0e6d47] text-white rounded text-[11px] font-bold shadow-sm transition-all flex items-center space-x-1"
                                   >
-                                    Award Contract
+                                    <span>Award Contract</span>
+                                    <span>→</span>
                                   </button>
                                 )}
                                 {b.status === 'AWARDED_L1' && (
-                                  <span className="text-emerald-600 font-bold text-[11px]">Awarded ✓</span>
+                                  <span className="text-[#138A5B] font-bold text-[11px] bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                                    Awarded ✓
+                                  </span>
                                 )}
                               </div>
                             </td>
@@ -507,13 +526,13 @@ export const TenderManagementPage: React.FC = () => {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex justify-between items-center text-xs">
-              <span className="text-slate-500">
-                Notice Inviting Tender verified under Central Vigilance Commission (CVC) Procurement Guidelines.
+            <div className="p-4 border-t border-[#D9E1EA] dark:border-slate-800 bg-[#F8FAFC] dark:bg-slate-800/40 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs">
+              <span className="text-slate-500 font-medium text-[11px]">
+                Notice Inviting Tender verified under Central Vigilance Commission (CVC) Procurement Guidelines & GFR 2017.
               </span>
               <button
                 onClick={() => setSelectedTender(null)}
-                className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 font-medium"
+                className="px-5 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-lg font-semibold transition-colors"
               >
                 Close
               </button>

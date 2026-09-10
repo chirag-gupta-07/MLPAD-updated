@@ -4,23 +4,36 @@
 
 @layer base {
   :root {
-    --bg-color: #f8fafc;
-    --text-color: #0f172a;
+    --bg-gov: #F5F7FA;
+    --navy-gov: #0B1F3A;
+    --blue-gov: #1558A6;
+    --border-gov: #D9E0E8;
+    --text-gov: #172033;
+    --text-muted: #5F6F82;
+    --saffron-gov: #F28C28;
+    --green-gov: #138A5B;
+    --risk-high: #C62828;
+    --risk-med: #D88900;
+    --risk-low: #16865A;
   }
   .dark {
-    --bg-color: #020617;
-    --text-color: #f8fafc;
+    --bg-gov: #0B1321;
+    --navy-gov: #0E1E38;
+    --blue-gov: #2563EB;
+    --border-gov: #1E293B;
+    --text-gov: #F8FAFC;
+    --text-muted: #94A3B8;
   }
   
   body {
-    @apply bg-slate-50 text-slate-900 transition-colors duration-200;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    @apply bg-[#F5F7FA] text-[#172033] transition-colors duration-200 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     margin: 0;
     padding: 0;
   }
   
   .dark body {
-    @apply bg-slate-950 text-slate-100;
+    @apply bg-[#070D18] text-[#F8FAFC];
   }
 }
 
@@ -69,4 +82,24 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Recharts Tooltip Contrast & Legibility */
+.recharts-default-tooltip {
+  background-color: #0B1F3A !important;
+  border: 1px solid #1E293B !important;
+  color: #FFFFFF !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+  padding: 8px 12px !important;
+}
+
+.recharts-tooltip-item,
+.recharts-tooltip-item-name,
+.recharts-tooltip-item-value,
+.recharts-tooltip-item-separator,
+.recharts-tooltip-label {
+  color: #FFFFFF !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
 }

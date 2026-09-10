@@ -104,3 +104,12 @@ def record_site_checkin_endpoint(work_id: str, checkin_data: Dict[str, Any] = Bo
         reason="Routine site geotagged check-in"
     )
     return {"status": "SUCCESS", "message": "Geotagged site check-in logged"}
+
+
+@router.post("/reset-demo")
+def reset_demo_lifecycle_endpoint() -> Dict[str, Any]:
+    """Wipes all test changes and resets to original presentation demo state."""
+    from backend.app.db.reset_demo import reset_all_databases_to_demo_state
+    result = reset_all_databases_to_demo_state()
+    return result
+

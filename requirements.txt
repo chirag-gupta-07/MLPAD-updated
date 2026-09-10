@@ -49,3 +49,6 @@ networkx>=3.2.0
 sentence-transformers>=2.3.0
 transformers>=4.36.0
 
+# Generative AI
+google-genai>=0.1.0
+python-dotenv>=1.0.0
