@@ -118,12 +118,13 @@ def get_dataframe() -> pd.DataFrame:
         if _cached_df is not None:
             return _cached_df
             
-        if DATA_PATH.exists():
+        master_tracked = PROJECT_ROOT / "data" / "processed" / "master_works.parquet"
+        if master_tracked.exists():
+            df_base = pd.read_parquet(master_tracked)
+        elif DATA_PATH.exists():
             df_base = pd.read_parquet(DATA_PATH)
         elif FALLBACK_PATH.exists():
             df_base = pd.read_parquet(FALLBACK_PATH)
-        elif (PROJECT_ROOT / "data" / "processed" / "master_works.parquet").exists():
-            df_base = pd.read_parquet(PROJECT_ROOT / "data" / "processed" / "master_works.parquet")
         else:
             # Check if Supabase DATABASE_URL is available
             import os
