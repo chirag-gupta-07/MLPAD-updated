@@ -1,7 +1,7 @@
 services:
   # Backend Web Service
   - type: web
-    name: mplads-backend
+    name: mlpad-gov-api
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -21,13 +21,13 @@ services:
 
 # Frontend Static Site
 staticSites:
-  - name: mplads-frontend
+  - name: mlpad-gov-portal
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://mplads-backend.onrender.com
+        value: https://mlpad-gov-api.onrender.com
     routes:
       - type: rewrite
         source: /*
