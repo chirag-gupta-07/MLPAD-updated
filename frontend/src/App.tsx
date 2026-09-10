@@ -139,16 +139,12 @@ export const App: React.FC = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           openUploadModal={() => setShowUploadModal(true)}
+          currentUser={currentUser}
           onLogout={handleLogout}
-          onRoleChange={(newRole) => {
-            if (currentUser) {
-              setCurrentUser({ ...currentUser, role: newRole });
-            }
-          }}
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col">
+        <main className="flex-1 max-w-[1700px] w-full mx-auto px-4 sm:px-6 py-6 flex flex-col">
           {selectedProject ? (
             <div className="animate-in fade-in duration-150 flex-1">
               <ProjectDetailPage work={selectedProject} onClose={() => setSelectedProject(null)} />

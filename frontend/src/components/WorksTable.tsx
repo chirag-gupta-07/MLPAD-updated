@@ -270,22 +270,22 @@ export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue
       </div>
 
       {/* Table Content */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+      <div className="overflow-x-auto border-t border-slate-100 dark:border-slate-800">
+        <table className="w-full min-w-[1150px] text-left text-xs">
           <thead className="bg-slate-100/70 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
             <tr>
-              <th className="px-4 py-3">Work ID & Description</th>
-              <th className="px-4 py-3">Location</th>
-              <th className="px-4 py-3">Sector</th>
-              <th className="px-4 py-3 text-right">Sanctioned</th>
-              <th className="px-4 py-3 text-right">Expended</th>
-              <th className="px-4 py-3 text-center" title="Self-reported completion pace from nodal portal records">
+              <th className="px-4 py-3 min-w-[240px] max-w-[320px]">Work ID & Description</th>
+              <th className="px-4 py-3 min-w-[120px]">Location</th>
+              <th className="px-4 py-3 min-w-[140px]">Sector</th>
+              <th className="px-4 py-3 text-right min-w-[100px]">Sanctioned</th>
+              <th className="px-4 py-3 text-right min-w-[110px]">Expended</th>
+              <th className="px-4 py-3 text-center min-w-[120px]" title="Self-reported completion pace from nodal portal records">
                 Reported Progress
               </th>
-              <th className="px-4 py-3 text-center" title="Empirical composite risk score (0-100) based on fiscal and execution signals">
+              <th className="px-4 py-3 text-center min-w-[110px]" title="Empirical composite risk score (0-100) based on fiscal and execution signals">
                 Risk Priority
               </th>
-              <th className="px-4 py-3 text-center">Action</th>
+              <th className="px-4 py-3 text-center min-w-[90px]">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -368,8 +368,8 @@ export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue
                   </td>
 
                   <td className="px-4 py-3 text-center whitespace-nowrap">
-                    <div className="flex flex-col items-center justify-center space-y-1.5">
-                      <div className="flex space-x-1">
+                    <div className="flex flex-col items-center justify-center space-y-1">
+                      <div className="flex items-center justify-center space-x-1.5">
                         <button
                           onClick={() => setEvidenceWork(w)}
                           className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-md transition"
@@ -388,7 +388,7 @@ export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue
                       {onOpenProject && (
                         <button
                           onClick={() => onOpenProject(w)}
-                          className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+                          className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold whitespace-nowrap"
                         >
                           View Full Details
                         </button>
