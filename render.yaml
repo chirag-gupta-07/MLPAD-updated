@@ -25,13 +25,10 @@ staticSites:
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://mplads-backend.onrender.com
     routes:
-      - type: rewrite
-        source: /api/*
-        destination: https://mplads-backend.onrender.com/api/*
-      - type: rewrite
-        source: /uploads/*
-        destination: https://mplads-backend.onrender.com/uploads/*
       - type: rewrite
         source: /*
         destination: /index.html
