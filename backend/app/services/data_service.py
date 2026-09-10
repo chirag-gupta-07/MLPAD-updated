@@ -118,11 +118,18 @@ def get_dataframe() -> pd.DataFrame:
         if _cached_df is not None:
             return _cached_df
             
+        import os
+        is_render = os.getenv("RENDER") == "true"
         master_tracked = PROJECT_ROOT / "data" / "processed" / "master_works.parquet"
-        if master_tracked.exists():
+        
+        # When deployed on Render, load the lightweight 10,000 works dataset to stay well under 512MB RAM
+        if is_render and master_tracked.exists():
             df_base = pd.read_parquet(master_tracked)
         elif DATA_PATH.exists():
+            # Local development: loads the complete 79,082 works
             df_base = pd.read_parquet(DATA_PATH)
+        elif master_tracked.exists():
+            df_base = pd.read_parquet(master_tracked)
         elif FALLBACK_PATH.exists():
             df_base = pd.read_parquet(FALLBACK_PATH)
         else:
