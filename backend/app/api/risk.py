@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from typing import Dict, Any, List
 from backend.app.services.data_service import get_risk_summary, get_dataframe
 import pandas as pd
@@ -42,3 +42,24 @@ def get_risk_clusters() -> List[Dict[str, Any]]:
             "is_hotspot": bool(r["high_risk_works"] >= 3 or r["avg_risk_score"] >= 45.0)
         })
     return records
+
+
+@router.get("/network")
+def get_network_analysis():
+    """Returns contractor-agency-MP network graph with anomaly scores."""
+    from backend.app.services.data_service import get_dataframe
+    from src.risk.network_analysis import get_network_graph_data
+    df = get_dataframe()
+    return get_network_graph_data(df)
+
+
+@router.get("/benford-analysis")
+def get_benford_analysis(
+    column: str = Query("total_expenditure"),
+    group_by: str = Query("district")
+):
+    """Benford's Law statistical fraud detection on financial data."""
+    from backend.app.services.data_service import get_dataframe
+    from backend.app.services.benford_analysis import analyze_benford_compliance
+    df = get_dataframe()
+    return analyze_benford_compliance(df, column=column, group_by=group_by)

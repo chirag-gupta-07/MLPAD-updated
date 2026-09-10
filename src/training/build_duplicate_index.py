@@ -51,6 +51,17 @@ def find_duplicate_works(df: pd.DataFrame, models_dir: Path) -> Tuple[np.ndarray
     )
     tfidf_matrix = vectorizer.fit_transform(descriptions)
     
+    # Compute sentence embeddings (optional - falls back gracefully if unavailable)
+    embedding_matrix = None
+    try:
+        from src.utils.embeddings import embed_texts
+        cache_path = models_dir / "work_description_embeddings.npy"
+        embedding_matrix = embed_texts(descriptions, cache_path=cache_path)
+        if embedding_matrix is not None:
+            logger.info(f"Sentence embeddings computed: shape {embedding_matrix.shape}")
+    except Exception as e:
+        logger.warning(f"Sentence embeddings unavailable, using TF-IDF only: {e}")
+    
     models_dir.mkdir(parents=True, exist_ok=True)
     joblib.dump(vectorizer, models_dir / "duplicate_tfidf_vectorizer.joblib")
     
@@ -83,8 +94,8 @@ def find_duplicate_works(df: pd.DataFrame, models_dir: Path) -> Tuple[np.ndarray
         sub_matrix = tfidf_matrix[indices]
         sim_matrix = cosine_similarity(sub_matrix)
         
-        # Only iterate candidate pairs with text similarity >= 0.55 in upper triangle
-        high_sim_pairs = np.argwhere(np.triu(sim_matrix, k=1) >= 0.55)
+        # Only iterate candidate pairs with text similarity >= 0.40 in upper triangle
+        high_sim_pairs = np.argwhere(np.triu(sim_matrix, k=1) >= 0.40)
         for i_sub, j_sub in high_sim_pairs:
             idx_a = indices[i_sub]
             idx_b = indices[j_sub]
@@ -107,9 +118,21 @@ def find_duplicate_works(df: pd.DataFrame, models_dir: Path) -> Tuple[np.ndarray
             delta_days = abs((sanction_dates[idx_a] - sanction_dates[idx_b]) / np.timedelta64(1, 'D'))
             time_sim = max(0.0, 1.0 - (delta_days / 730.0))
             
-            comp_dup_score = round(float(
-                (0.50 * text_sim + 0.25 * cost_sim + 0.15 * loc_sim + 0.10 * time_sim) * 100.0
-            ), 2)
+            # Embedding similarity (if available)
+            embed_sim = 0.0
+            if embedding_matrix is not None:
+                embed_sim = float(np.dot(embedding_matrix[idx_a], embedding_matrix[idx_b]))
+            
+            # Updated composite with embedding signal
+            if embedding_matrix is not None:
+                comp_dup_score = round(float(
+                    (0.35 * text_sim + 0.25 * embed_sim + 0.20 * cost_sim + 0.12 * loc_sim + 0.08 * time_sim) * 100.0
+                ), 2)
+            else:
+                # Original TF-IDF-only weights
+                comp_dup_score = round(float(
+                    (0.50 * text_sim + 0.25 * cost_sim + 0.15 * loc_sim + 0.10 * time_sim) * 100.0
+                ), 2)
             
             if comp_dup_score >= 50.0:
                 duplicate_pairs_found += 1

@@ -20,11 +20,12 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 WEIGHTS = {
-    "financial": 0.30,
-    "delay": 0.25,
-    "duplicate": 0.20,
-    "utilization": 0.15,
-    "stall": 0.10
+    "financial": 0.28,
+    "delay": 0.24,
+    "duplicate": 0.18,
+    "utilization": 0.12,
+    "stall": 0.10,
+    "citizen_evidence": 0.08
 }
 
 
@@ -66,17 +67,22 @@ def calculate_composite_risk(df: pd.DataFrame) -> pd.DataFrame:
     util = df["utilization_anomaly_score"].fillna(10.0).clip(0.0, 100.0)
     stall = df["stall_risk_score"].fillna(10.0).clip(0.0, 100.0)
     
+    if "citizen_evidence_risk_score" not in df.columns:
+        df["citizen_evidence_risk_score"] = 0.0
+    citizen_ev = df["citizen_evidence_risk_score"].fillna(0.0).clip(0.0, 100.0)
+    
     # Weighted composite base
     composite_base = (
         WEIGHTS["financial"] * fin +
         WEIGHTS["delay"] * delay +
         WEIGHTS["duplicate"] * dup +
         WEIGHTS["utilization"] * util +
-        WEIGHTS["stall"] * stall
+        WEIGHTS["stall"] * stall +
+        WEIGHTS["citizen_evidence"] * citizen_ev
     )
     
     # Severe isolated anomaly booster (if any dimension has an extreme spike >= 85)
-    severe_boost = np.where((fin >= 85.0) | (util >= 85.0) | (dup >= 85.0) | (stall >= 85.0), 15.0, 0.0)
+    severe_boost = np.where((fin >= 85.0) | (util >= 85.0) | (dup >= 85.0) | (stall >= 85.0) | (citizen_ev >= 85.0), 15.0, 0.0)
     
     df["composite_risk_score"] = np.round(np.clip(composite_base + severe_boost, 0.0, 100.0), 2)
     

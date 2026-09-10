@@ -11,6 +11,12 @@ from backend.app.db.lifecycle_db import get_project_lifecycle
 from backend.app.services.verification_engine import calculate_cross_source_consistency
 from backend.app.db import operations_db
 
+try:
+    from src.utils.embeddings import retrieve_policy_chunks
+    RAG_AVAILABLE = True
+except ImportError:
+    RAG_AVAILABLE = False
+
 load_dotenv()
 logger = logging.getLogger(__name__)
 
@@ -133,6 +139,21 @@ def answer_assistant_query(req: QueryRequest) -> Dict[str, Any]:
                     update_text += f" Issues: {latest['current_issues']}."
 
             # Build rich prompt for Gemini with full operational intelligence
+            
+            # RAG: Retrieve relevant policy chunks
+            policy_sources = []
+            policy_context = ""
+            if RAG_AVAILABLE:
+                try:
+                    policy_sources = retrieve_policy_chunks(q, top_k=3, threshold=0.25)
+                    if policy_sources:
+                        policy_context = "\nRELEVANT POLICY REFERENCES (cite these when applicable):\n"
+                        for ps in policy_sources:
+                            policy_context += f"- [{ps['section']}]: {ps['content'][:500]}\n"
+                        policy_context += "\nIMPORTANT: Cite the specific guideline paragraph when your answer relies on these references. If no reference is relevant to the question, say 'no specific guideline found' rather than inventing one.\n"
+                except Exception as e:
+                    logger.warning(f"RAG retrieval failed: {e}")
+                    
             llm_prompt = f"""
 You are the Official AI Auditor and Decision-Support Assistant for the Ministry of Statistics & Programme Implementation (MoSPI) monitoring MPLADS project {req.work_id}.
 
@@ -177,7 +198,7 @@ PAYMENT STATUS:
 
 DETECTED INCONSISTENCIES:
 {json.dumps(consistency.get('inconsistencies', []), indent=2)}
-
+{policy_context}
 VERIFICATION CHECKLIST:
 {json.dumps(consistency.get('verification_checklist', []), indent=2)}
 
@@ -196,7 +217,8 @@ Provide a detailed, evidence-based response. Structure your analysis with:
                 return {
                     "query": req.query,
                     "answer": llm_answer,
-                    "highlighted_works": [],
+                    "sources": [{"document": s["document"], "section": s["section"], "relevance_score": s["relevance_score"]} for s in policy_sources] if policy_sources else [],
+                    "highlighted_works": [req.work_id],
                     "suggestions": [
                         "Why is this project's risk score high?",
                         "Check material reconciliation issues",
@@ -249,6 +271,7 @@ Provide a detailed, evidence-based response. Structure your analysis with:
             return {
                 "query": req.query,
                 "answer": three_d_text,
+                "sources": [],
                 "triangulation": {
                     "physical_progress": phys_pct,
                     "material_consumption": mat_pct,
@@ -259,7 +282,7 @@ Provide a detailed, evidence-based response. Structure your analysis with:
                     "expenditure_summary": f"{len(payments)} payment request(s) totaling ₹{round(payment_total/1e5, 2)}L (₹{round(payment_paid/1e5, 2)}L paid via PFMS).",
                     "discrepancies": recon_issues
                 },
-                "highlighted_works": [],
+                "highlighted_works": [req.work_id],
                 "suggestions": [
                     "Check material delivery challans vs site inventory",
                     "Verify physical cross-sections against BoQ",
@@ -267,6 +290,20 @@ Provide a detailed, evidence-based response. Structure your analysis with:
                 ]
             }
 
+
+    # RAG: Retrieve relevant policy chunks
+    policy_sources = []
+    policy_context = ""
+    if RAG_AVAILABLE:
+        try:
+            policy_sources = retrieve_policy_chunks(q, top_k=3, threshold=0.25)
+            if policy_sources:
+                policy_context = "\nRELEVANT POLICY REFERENCES (cite these when applicable):\n"
+                for ps in policy_sources:
+                    policy_context += f"- [{ps['section']}]: {ps['content'][:500]}\n"
+                policy_context += "\nIMPORTANT: Cite the specific guideline paragraph when your answer relies on these references. If no reference is relevant to the question, say 'no specific guideline found' rather than inventing one.\n"
+        except Exception as e:
+            logger.warning(f"RAG retrieval failed: {e}")
 
     # If general LLM query
     general_prompt = f"""
@@ -276,7 +313,7 @@ Platform Summary:
 - Total Budget: ₹{summary['total_sanctioned_crore']} Cr | Expenditure: ₹{summary['total_expenditure_crore']} Cr
 - High Risk Works: {summary['risk_breakdown']['high_risk_count']} ({summary['risk_breakdown']['high_risk_percentage']}%)
 - Overall Fund Utilization: {summary['overall_utilization_rate']}%
-
+{policy_context}
 USER QUESTION:
 "{q}"
 
@@ -287,6 +324,7 @@ Answer concisely and factually based on official government monitoring standards
         return {
             "query": req.query,
             "answer": llm_general,
+            "sources": [{"document": s["document"], "section": s["section"], "relevance_score": s["relevance_score"]} for s in policy_sources] if policy_sources else [],
             "highlighted_works": [],
             "suggestions": ["Show top high-risk works", "Find duplicate works", "Show delayed projects in Uttar Pradesh"]
         }
@@ -323,6 +361,7 @@ Answer concisely and factually based on official government monitoring standards
         return {
             "query": req.query,
             "answer": answer,
+            "sources": [],
             "highlighted_works": top_works,
             "suggestions": ["Show duplicate works in this district", "Which contractors have repeat delays?", "View on GIS Map"]
         }
@@ -344,6 +383,7 @@ Answer concisely and factually based on official government monitoring standards
         return {
             "query": req.query,
             "answer": answer,
+            "sources": [],
             "highlighted_works": top_dups,
             "suggestions": ["Show delayed works", "Summarize Uttar Pradesh risk profile"]
         }
@@ -365,6 +405,7 @@ Answer concisely and factually based on official government monitoring standards
         return {
             "query": req.query,
             "answer": answer,
+            "sources": [],
             "highlighted_works": top_delays,
             "suggestions": ["Show high-risk works", "List agency delay rates"]
         }
@@ -381,6 +422,7 @@ Answer concisely and factually based on official government monitoring standards
         return {
             "query": req.query,
             "answer": answer,
+            "sources": [],
             "highlighted_works": [],
             "suggestions": ["Show top high-risk works", "Find duplicate works", "Show delayed projects in Uttar Pradesh"]
         }

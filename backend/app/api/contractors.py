@@ -37,6 +37,7 @@ class ProgressUpdateRequest(BaseModel):
 def list_contractors(
     license_class: Optional[str] = None,
     kyc_status: Optional[str] = None,
+    current_user: User = Depends(require_roles(["DISTRICT_COLLECTOR", "VIGILANCE", "SUPER_ADMIN"])),
     db: Session = Depends(get_db)
 ):
     """Lists enlisted government contractors."""
@@ -184,6 +185,11 @@ def update_work_order_progress(
     wo = db.query(WorkOrder).filter(WorkOrder.id == work_order_id).first()
     if not wo:
         raise HTTPException(status_code=404, detail="Work Order not found")
+
+    if current_user.role != "SUPER_ADMIN":
+        contractor = db.query(ContractorProfile).filter(ContractorProfile.user_id == current_user.id).first()
+        if not contractor or wo.contractor_id != contractor.id:
+            raise HTTPException(status_code=403, detail="Forbidden: You can only update progress on your own work orders.")
 
     new_pct = min(100.0, max(0.0, req.progress_percentage))
     wo.current_progress_pct = new_pct

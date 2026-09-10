@@ -306,14 +306,7 @@ export const WorksTable: React.FC<WorksTableProps> = ({ initialVerificationQueue
               works.map((w) => (
                 <tr key={w.work_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition">
                   <td className="px-4 py-3 max-w-xs">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-slate-900 dark:text-slate-100 font-mono text-[11px]">{w.work_id}</span>
-                      {(w.work_id?.startsWith('MPLADS/REC/') || w.work_id?.startsWith('WORK-')) && (
-                        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs">
-                          ⚡ LIVE WORKFLOW
-                        </span>
-                      )}
-                    </div>
+                    <div className="font-bold text-slate-900 dark:text-slate-100 font-mono text-[11px]">{w.work_id}</div>
                     <div className="text-slate-600 dark:text-slate-400 truncate mt-0.5 text-xs" title={w.work_description}>
                       {w.work_description}
                     </div>

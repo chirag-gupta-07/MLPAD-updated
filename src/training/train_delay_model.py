@@ -27,6 +27,12 @@ from sklearn.metrics import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+try:
+    from xgboost import XGBClassifier
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+
 # STRICTLY PRE-KICKOFF PREDICTIVE FEATURES ONLY
 PREDICTIVE_NUMERIC_FEATURES = [
     "sanctioned_amount",
@@ -36,12 +42,16 @@ PREDICTIVE_NUMERIC_FEATURES = [
     "planned_duration_days",
     "cost_vs_peer_median_ratio",
     "peer_cost_zscore",
-    "agency_work_volume"
+    "agency_work_volume",
+    "agency_rolling_ontime_rate",
+    "mp_concurrent_open_works",
+    "sanction_month"
 ]
 
 PREDICTIVE_CATEGORICAL_FEATURES = [
     "sector",
-    "state"
+    "state",
+    "sector_state_interaction"
 ]
 
 
@@ -81,10 +91,21 @@ def train_and_evaluate_delay_models(df: pd.DataFrame, models_dir: Path) -> Tuple
     )
     
     candidates = {
-        "Baseline_LogisticRegression": LogisticRegression(C=1.0, max_iter=500, random_state=42),
-        "RandomForest": RandomForestClassifier(n_estimators=150, max_depth=6, min_samples_split=5, random_state=42),
-        "GradientBoosting": GradientBoostingClassifier(n_estimators=100, max_depth=4, learning_rate=0.05, subsample=0.85, random_state=42)
+        "Baseline_LogisticRegression": LogisticRegression(C=1.0, max_iter=500, class_weight='balanced', random_state=42),
+        "RandomForest": RandomForestClassifier(n_estimators=200, max_depth=8, min_samples_split=5, class_weight='balanced', random_state=42),
+        "GradientBoosting": GradientBoostingClassifier(n_estimators=150, max_depth=5, learning_rate=0.05, subsample=0.85, random_state=42),
     }
+
+    if XGBOOST_AVAILABLE:
+        # Compute scale_pos_weight for class imbalance
+        neg_count = len(y_train) - y_train.sum()
+        pos_count = max(y_train.sum(), 1)
+        spw = neg_count / pos_count
+        candidates["XGBoost"] = XGBClassifier(
+            n_estimators=200, max_depth=6, learning_rate=0.05,
+            subsample=0.85, scale_pos_weight=spw,
+            use_label_encoder=False, eval_metric='logloss', random_state=42
+        )
     
     evaluation_results = {}
     best_model_name = ""
@@ -131,6 +152,22 @@ def train_and_evaluate_delay_models(df: pd.DataFrame, models_dir: Path) -> Tuple
 
     logger.info(f"Selected Best Model: {best_model_name} (F1: {best_f1*100:.2f}%, ROC-AUC: {evaluation_results[best_model_name]['ROC-AUC']})")
     
+    from sklearn.calibration import CalibratedClassifierCV
+    # Try calibrated version
+    try:
+        calibrated_pipe = Pipeline([
+            ("preprocessor", preprocessor),
+            ("classifier", CalibratedClassifierCV(best_pipeline.named_steps['classifier'], cv=3, method='isotonic'))
+        ])
+        calibrated_pipe.fit(X_train, y_train)
+        cal_probs = calibrated_pipe.predict_proba(X_test)[:, 1]
+        cal_roc = roc_auc_score(y_test, cal_probs)
+        if cal_roc >= evaluation_results[best_model_name]['ROC-AUC']:
+            best_pipeline = calibrated_pipe
+            logger.info(f"Calibrated model improved ROC-AUC to {cal_roc:.4f}")
+    except Exception as e:
+        logger.warning(f"Calibration failed, using uncalibrated model: {e}")
+
     # Fit final pipeline on all historical data
     best_pipeline.fit(X, y)
     all_probs = best_pipeline.predict_proba(X)[:, 1]

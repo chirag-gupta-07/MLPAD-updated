@@ -8,11 +8,21 @@ import math
 import uuid
 import shutil
 import logging
+import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone
 import pandas as pd
 from fastapi import UploadFile
+
+try:
+    import imagehash
+    from PIL import Image as PILImage
+    IMAGEHASH_AVAILABLE = True
+except ImportError:
+    IMAGEHASH_AVAILABLE = False
+
+from backend.app.db.citizen_evidence_db import get_all_phashes
 
 from backend.app.db.citizen_evidence_db import (
     init_db,
@@ -28,6 +38,36 @@ from backend.app.services.data_service import get_work_by_id, get_dataframe
 
 logger = logging.getLogger(__name__)
 
+def compute_photo_phash(photo_path: Path) -> Optional[str]:
+    if not IMAGEHASH_AVAILABLE:
+        return None
+    try:
+        img = PILImage.open(photo_path)
+        return str(imagehash.phash(img))
+    except Exception as e:
+        logger.warning(f"pHash computation failed: {e}")
+        return None
+
+def check_photo_reuse(phash_str: str, current_work_id: str) -> Dict[str, Any]:
+    if not phash_str:
+        return {"flag": None, "matches": []}
+    existing = get_all_phashes(exclude_work_id=current_work_id)
+    matches = []
+    for rec in existing:
+        try:
+            existing_hash = imagehash.hex_to_hash(rec["photo_phash"])
+            current_hash = imagehash.hex_to_hash(phash_str)
+            distance = current_hash - existing_hash
+            if distance < 8:
+                matches.append({
+                    "matched_evidence_id": rec["id"],
+                    "matched_work_id": rec["work_id"],
+                    "hamming_distance": distance
+                })
+        except Exception:
+            continue
+    flag = "REUSED_PHOTO_SUSPECTED" if matches else None
+    return {"flag": flag, "matches": matches}
 
 def haversine_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Computes great-circle distance between two GPS coordinates in kilometers."""
@@ -109,11 +149,47 @@ def create_citizen_evidence_submission(
     # Save photo if provided
     photo_filename = None
     photo_url = None
+    
+    photo_phash = None
+    reused_photo_flag = None
+    reused_photo_matches = []
+    classified_stage = "UNVERIFIED"
+    image_progress_mismatch = None
+    mismatch_severity = None
+    
     if photo_file:
         try:
             photo_filename, photo_url = save_evidence_photo(photo_file)
+            
+            photo_path = UPLOADS_DIR / photo_filename
+            
+            # 6a: Perceptual hash duplicate detection
+            photo_phash = compute_photo_phash(photo_path)
+            if photo_phash:
+                reuse_result = check_photo_reuse(photo_phash, work_id)
+                reused_photo_flag = reuse_result["flag"]
+                reused_photo_matches = reuse_result["matches"]
+            
+            # 6b: Construction stage classification
+            try:
+                from backend.app.services.image_classifier import classify_construction_stage
+                classification = classify_construction_stage(str(photo_path))
+                classified_stage = classification.get("classified_stage", "UNVERIFIED")
+            except Exception as e:
+                logger.warning(f"Image classification failed: {e}")
+                classified_stage = "UNVERIFIED"
+            
+            # 6c: Cross-check classified stage vs official progress
+            if classified_stage not in ("UNVERIFIED", "NOT_CONSTRUCTION"):
+                if official_progress > 80.0 and classified_stage in ("EMPTY_SITE", "FOUNDATION"):
+                    image_progress_mismatch = "IMAGE_PROGRESS_MISMATCH"
+                    mismatch_severity = "HIGH"
+                elif official_progress > 50.0 and classified_stage == "EMPTY_SITE":
+                    image_progress_mismatch = "IMAGE_PROGRESS_MISMATCH"
+                    mismatch_severity = "MEDIUM"
+                    
         except Exception as e:
-            logger.error("Failed to save evidence photo: %s", e)
+            logger.error("Failed to process evidence photo: %s", e)
 
     evidence_id = f"CE-{uuid.uuid4().hex[:8].upper()}"
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -140,7 +216,13 @@ def create_citizen_evidence_submission(
         "verification_status": "PENDING_VERIFICATION",
         "admin_notes": None,
         "verified_at": None,
-        "verified_by": None
+        "verified_by": None,
+        "photo_phash": photo_phash,
+        "reused_photo_flag": reused_photo_flag,
+        "reused_photo_matches": json.dumps(reused_photo_matches) if reused_photo_matches else None,
+        "classified_stage": classified_stage,
+        "image_progress_mismatch": image_progress_mismatch,
+        "mismatch_severity": mismatch_severity
     }
 
     insert_evidence(record)

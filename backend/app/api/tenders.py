@@ -317,7 +317,7 @@ def _submit_bid_helper(
         emd_paid=req.emd_paid,
         emd_transaction_id=req.emd_transaction_id or f"TXN-EMD-{uuid.uuid4().hex[:6].upper()}",
         technical_score=contractor.performance_score or 75.0,
-        technical_status="QUALIFIED",
+        technical_status="PENDING_VERIFICATION",
         submission_ip=client_ip,
         status="SUBMITTED"
     )
@@ -442,18 +442,25 @@ def _award_tender_helper(tender_id: str, contractor_id: Optional[str], db: Sessi
     if not tender:
         raise HTTPException(status_code=404, detail="Tender not found")
 
+    if tender.status not in ("EVALUATING", "AWARDED"):
+        raise HTTPException(status_code=400, detail=f"Tender must be evaluated before awarding. Current status: {tender.status}")
+
     bids = db.query(Bid).filter(Bid.tender_id == tender_id).all()
     if not bids:
         raise HTTPException(status_code=400, detail="Cannot award tender without bids.")
 
+    qualified_bids = [b for b in bids if b.technical_status == "QUALIFIED"]
+    if not qualified_bids:
+        raise HTTPException(status_code=400, detail="No technically qualified bids available for award. Run document verification first.")
+
     if not contractor_id:
-        l1_bid = min(bids, key=lambda x: x.quoted_amount)
+        l1_bid = min(qualified_bids, key=lambda x: x.quoted_amount)
         contractor_id = l1_bid.contractor_id
         awarded_bid = l1_bid
     else:
-        awarded_bid = next((b for b in bids if b.contractor_id == contractor_id), None)
+        awarded_bid = next((b for b in qualified_bids if b.contractor_id == contractor_id), None)
         if not awarded_bid:
-            raise HTTPException(status_code=400, detail=f"Contractor {contractor_id} has not bid on this tender.")
+            raise HTTPException(status_code=400, detail=f"Contractor {contractor_id} has not bid on this tender or is not technically qualified.")
 
     tender.status = "AWARDED"
     tender.awarded_contractor_id = contractor_id
@@ -529,6 +536,10 @@ def _award_tender_helper(tender_id: str, contractor_id: Optional[str], db: Sessi
     except Exception:
         pass
 
+    import json
+    cartel_flags = json.loads(awarded_bid.cartel_flags or "[]")
+    critical_flags = [f for f in cartel_flags if f.get("severity") in ("CRITICAL", "HIGH")]
+
     return {
         "status": "SUCCESS",
         "message": f"Tender successfully awarded! Work Order {work_order_id} generated.",
@@ -538,7 +549,9 @@ def _award_tender_helper(tender_id: str, contractor_id: Optional[str], db: Sessi
             "contractor_id": work_order.contractor_id,
             "sanctioned_amount": work_order.sanctioned_amount,
             "target_completion": work_order.target_completion_date.strftime("%Y-%m-%d")
-        }
+        },
+        "cartel_warnings": critical_flags,
+        "cartel_warning_count": len(critical_flags)
     }
 
 
@@ -565,6 +578,7 @@ def award_tender_path(
 async def verify_bid_documents(
     file: UploadFile = File(...),
     tender_id: Optional[str] = Form(None),
+    contractor_id: Optional[str] = Form(None),
     estimated_cost: Optional[float] = Form(4500000.0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -594,6 +608,17 @@ async def verify_bid_documents(
     result = verify_technical_bid_pdf(pdf_bytes, cost)
     result["filename"] = file.filename
     result["file_size_kb"] = round(len(pdf_bytes) / 1024, 1)
+
+    overall_verdict = result.get("overall_verdict")
+    if overall_verdict and tender_id and contractor_id:
+        bid = db.query(Bid).filter(Bid.tender_id == tender_id, Bid.contractor_id == contractor_id).first()
+        if bid:
+            if overall_verdict == "QUALIFIED":
+                bid.technical_status = "QUALIFIED"
+            elif overall_verdict == "DISQUALIFIED":
+                bid.technical_status = "DISQUALIFIED"
+            db.commit()
+
     return result
 
 

@@ -39,4 +39,13 @@ passlib[bcrypt]>=1.7.4
 
 # Metadata & Inspection
 exifread>=3.0.0
+imagehash>=4.3.0
+Pillow>=10.0.0
+
+# Graph Analytics & Network Fraud
+networkx>=3.2.0
+
+# NLP & Sentence Embeddings
+sentence-transformers>=2.3.0
+transformers>=4.36.0
 

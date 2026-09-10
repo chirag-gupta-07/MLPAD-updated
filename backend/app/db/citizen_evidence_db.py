@@ -54,16 +54,70 @@ def init_db():
                 verification_status TEXT NOT NULL DEFAULT 'PENDING_VERIFICATION',
                 admin_notes TEXT,
                 verified_at TEXT,
-                verified_by TEXT
+                verified_by TEXT,
+                photo_phash TEXT,
+                classified_stage TEXT,
+                reused_photo_flag TEXT,
+                reused_photo_matches TEXT,
+                image_progress_mismatch TEXT,
+                mismatch_severity TEXT
             );
         """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_evidence_work_id ON citizen_evidence (work_id);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_evidence_status ON citizen_evidence (verification_status);")
+        
+        # Add columns if they do not exist (migration)
+        for col in ["photo_phash", "classified_stage", "reused_photo_flag", "reused_photo_matches", "image_progress_mismatch", "mismatch_severity"]:
+            try:
+                cursor.execute(f"ALTER TABLE citizen_evidence ADD COLUMN {col} TEXT")
+            except sqlite3.OperationalError:
+                # Column already exists
+                pass
+
         conn.commit()
         logger.info("Citizen evidence database initialized successfully at %s", DB_PATH)
 
+def get_all_phashes(exclude_work_id: str = None) -> List[Dict[str, Any]]:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        if exclude_work_id:
+            cursor.execute("SELECT id, work_id, photo_phash FROM citizen_evidence WHERE photo_phash IS NOT NULL AND work_id != ?", (exclude_work_id,))
+        else:
+            cursor.execute("SELECT id, work_id, photo_phash FROM citizen_evidence WHERE photo_phash IS NOT NULL")
+        return [dict(row) for row in cursor.fetchall()]
+
 
 def insert_evidence(record: Dict[str, Any]) -> Dict[str, Any]:
+    full_record = {
+        "id": record.get("id"),
+        "work_id": record.get("work_id"),
+        "citizen_name": record.get("citizen_name"),
+        "citizen_contact": record.get("citizen_contact"),
+        "issue_type": record.get("issue_type"),
+        "description": record.get("description"),
+        "photo_filename": record.get("photo_filename"),
+        "photo_url": record.get("photo_url"),
+        "latitude": record.get("latitude"),
+        "longitude": record.get("longitude"),
+        "work_latitude": record.get("work_latitude"),
+        "work_longitude": record.get("work_longitude"),
+        "distance_from_site_km": record.get("distance_from_site_km"),
+        "proximity_flag": record.get("proximity_flag"),
+        "official_progress": record.get("official_progress"),
+        "claimed_progress": record.get("claimed_progress"),
+        "progress_gap": record.get("progress_gap"),
+        "submission_timestamp": record.get("submission_timestamp"),
+        "verification_status": record.get("verification_status", "PENDING_VERIFICATION"),
+        "admin_notes": record.get("admin_notes"),
+        "verified_at": record.get("verified_at"),
+        "verified_by": record.get("verified_by"),
+        "photo_phash": record.get("photo_phash"),
+        "classified_stage": record.get("classified_stage"),
+        "reused_photo_flag": record.get("reused_photo_flag"),
+        "reused_photo_matches": record.get("reused_photo_matches"),
+        "image_progress_mismatch": record.get("image_progress_mismatch"),
+        "mismatch_severity": record.get("mismatch_severity")
+    }
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -72,15 +126,19 @@ def insert_evidence(record: Dict[str, Any]) -> Dict[str, Any]:
                 description, photo_filename, photo_url, latitude, longitude,
                 work_latitude, work_longitude, distance_from_site_km, proximity_flag,
                 official_progress, claimed_progress, progress_gap,
-                submission_timestamp, verification_status, admin_notes, verified_at, verified_by
+                submission_timestamp, verification_status, admin_notes, verified_at, verified_by,
+                photo_phash, classified_stage, reused_photo_flag, reused_photo_matches,
+                image_progress_mismatch, mismatch_severity
             ) VALUES (
                 :id, :work_id, :citizen_name, :citizen_contact, :issue_type,
                 :description, :photo_filename, :photo_url, :latitude, :longitude,
                 :work_latitude, :work_longitude, :distance_from_site_km, :proximity_flag,
                 :official_progress, :claimed_progress, :progress_gap,
-                :submission_timestamp, :verification_status, :admin_notes, :verified_at, :verified_by
+                :submission_timestamp, :verification_status, :admin_notes, :verified_at, :verified_by,
+                :photo_phash, :classified_stage, :reused_photo_flag, :reused_photo_matches,
+                :image_progress_mismatch, :mismatch_severity
             )
-        """, record)
+        """, full_record)
         conn.commit()
     return record
 

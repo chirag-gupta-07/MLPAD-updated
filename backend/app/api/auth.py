@@ -16,10 +16,16 @@ from sqlalchemy.orm import Session
 
 from backend.app.db.database import get_db
 from backend.app.db.models import User, ContractorProfile
-
 router = APIRouter(prefix="/api/auth", tags=["Authentication & RBAC"])
 
-JWT_SECRET = os.getenv("JWT_SECRET", "sih2026_national_mplads_secure_jwt_token_key")
+DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() in ("true", "1", "yes")
+_raw_jwt = os.getenv("JWT_SECRET")
+if not _raw_jwt:
+    if not DEMO_MODE:
+        raise RuntimeError("JWT_SECRET environment variable must be set in production mode.")
+    JWT_SECRET = "sih2026_national_mplads_secure_jwt_token_key"
+else:
+    JWT_SECRET = _raw_jwt
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
@@ -214,6 +220,9 @@ def get_demo_personas():
 @router.post("/switch-persona/{persona_key}", response_model=TokenResponse)
 def switch_persona(persona_key: str, db: Session = Depends(get_db)):
     """Instantly switches logged-in persona and issues a valid signed JWT token."""
+    if not DEMO_MODE:
+        raise HTTPException(status_code=403, detail="Persona switching is disabled in production mode.")
+
     key = persona_key.lower().strip()
     if key not in DEMO_PERSONAS:
         raise HTTPException(status_code=404, detail=f"Persona '{persona_key}' not found. Available: {list(DEMO_PERSONAS.keys())}")
@@ -277,10 +286,11 @@ def switch_persona(persona_key: str, db: Session = Depends(get_db)):
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == req.username).first()
     if not user or not verify_password(req.password, user.hashed_password):
-        # Fallback check against demo personas
-        for p in DEMO_PERSONAS.values():
-            if p["username"] == req.username and req.password in ("demo@sih2026", "password", "123456"):
-                return switch_persona(p["role"].lower(), db)
+        # In demo mode only, allow single fallback demo password
+        if DEMO_MODE:
+            for p in DEMO_PERSONAS.values():
+                if p["username"] == req.username and req.password == "demo@sih2026":
+                    return switch_persona(p["role"].lower(), db)
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     token_payload = {

@@ -312,11 +312,14 @@ def init_operations_db():
                 request_date TEXT NOT NULL DEFAULT (date('now')),
                 status TEXT NOT NULL DEFAULT 'SUBMITTED' CHECK(status IN (
                     'SUBMITTED', 'VALIDATED', 'UNDER_REVIEW', 'LINKED_TO_PROJECT',
-                    'FEASIBILITY', 'APPROVED', 'REJECTED', 'DUPLICATE'
+                    'FEASIBILITY', 'APPROVED', 'REJECTED', 'DUPLICATE', 'RECOMMENDED_BY_MP'
                 )),
                 linked_project_id TEXT,
                 similar_request_count INTEGER DEFAULT 0,
                 cluster_id TEXT,
+                upvotes INTEGER DEFAULT 1,
+                mp_notice_number TEXT,
+                mp_recommended_date TEXT,
                 decision_remarks TEXT,
                 decided_by TEXT,
                 decided_date TEXT,
@@ -365,6 +368,17 @@ def init_operations_db():
         c.execute("CREATE INDEX IF NOT EXISTS idx_dev_requests_location ON development_requests(latitude, longitude)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_audit_entity ON operations_audit_log(entity_type, entity_id)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_audit_project ON operations_audit_log(project_id)")
+
+        # Migrations for existing databases
+        for col_def in [
+            ("upvotes", "INTEGER DEFAULT 1"),
+            ("mp_notice_number", "TEXT"),
+            ("mp_recommended_date", "TEXT")
+        ]:
+            try:
+                c.execute(f"ALTER TABLE development_requests ADD COLUMN {col_def[0]} {col_def[1]}")
+            except sqlite3.OperationalError:
+                pass
 
         conn.commit()
         logger.info("Operations database initialized at %s", DB_PATH)
@@ -1100,7 +1114,7 @@ def get_material_reconciliation(project_id: str) -> List[Dict]:
 # ---------------------------------------------------------------------------
 
 APPROVAL_TRANSITIONS = {
-    "PROPOSED": ["UNDER_REVIEW", "AUTHORITY_REVIEW", "APPROVED", "SANCTIONED", "REJECTED"],
+    "PROPOSED": ["UNDER_REVIEW", "AUTHORITY_REVIEW", "REJECTED"],
     "UNDER_REVIEW": ["ELIGIBILITY_CHECK", "AUTHORITY_REVIEW", "APPROVED", "SANCTIONED", "RETURNED", "REJECTED"],
     "ELIGIBILITY_CHECK": ["AUTHORITY_REVIEW", "APPROVED", "SANCTIONED", "RETURNED", "REJECTED"],
     "AUTHORITY_REVIEW": ["APPROVED", "SANCTIONED", "RETURNED", "REJECTED"],
@@ -1457,25 +1471,56 @@ def submit_development_request(category: str, description: str,
                                latitude: float = None, longitude: float = None,
                                **kwargs) -> Dict:
     import uuid
+    from backend.app.services.demand_clustering import check_mplads_feasibility
+    
+    # Automated Statutory Compliance Check (Para 4.5 of MPLADS Guidelines 2016)
+    feasibility = check_mplads_feasibility(description, category)
+    is_feasible = feasibility.get("is_feasible", True)
+    initial_status = "SUBMITTED" if is_feasible else "REJECTED"
+    decision_remarks = None
+    decided_by = None
+    decided_date = None
+    
+    if not is_feasible:
+        violates = feasibility.get("violates_para", "Para 4.5 Guidelines")
+        warning = feasibility.get("warning", "Proposal violates statutory guidelines.")
+        suggestion = feasibility.get("suggestion", "")
+        decision_remarks = f"AI Ineligibility Gate: {violates}. {warning} {suggestion}".strip()
+        decided_by = "AI Statutory Compliance Engine (Para 4.5)"
+        decided_date = datetime.now().strftime("%Y-%m-%d")
+
     req_id = f"DR-{uuid.uuid4().hex[:8].upper()}"
     with get_connection() as conn:
         cur = conn.execute("""
             INSERT INTO development_requests
                 (request_id, category, location_description, latitude, longitude,
-                 description, photo_path, citizen_name, citizen_contact, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SUBMITTED')
+                 description, photo_path, citizen_name, citizen_contact, status,
+                 decision_remarks, decided_by, decided_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             req_id, category, kwargs.get("location_description"),
             latitude, longitude, description,
             kwargs.get("photo_path"), kwargs.get("citizen_name"),
-            kwargs.get("citizen_contact")
+            kwargs.get("citizen_contact"), initial_status,
+            decision_remarks, decided_by, decided_date
         ))
         conn.commit()
         row_id = cur.lastrowid
 
     log_audit("development_request", row_id, None, kwargs.get("citizen_name", "Citizen"),
-              "Citizen", "SUBMIT_REQUEST", None, {"category": category, "status": "SUBMITTED"})
-    return {"id": row_id, "request_id": req_id, "status": "SUBMITTED"}
+              "Citizen", "SUBMIT_REQUEST", None, {
+                  "category": category,
+                  "status": initial_status,
+                  "is_feasible": is_feasible,
+                  "decision_remarks": decision_remarks
+              })
+    return {
+        "id": row_id,
+        "request_id": req_id,
+        "status": initial_status,
+        "is_feasible": is_feasible,
+        "feasibility": feasibility
+    }
 
 
 def find_nearby_existing_projects(latitude: float, longitude: float, radius_km: float = 3.0) -> List[Dict]:
@@ -1618,6 +1663,183 @@ def take_request_decision(request_id: int, decided_by: str, user_role: str,
     log_audit("development_request", request_id, updates.get("linked_project_id"), decided_by, user_role,
               "DECISION", {"status": prev}, {"status": new_status})
     return {"request_id": request_id, "previous_status": prev, "new_status": new_status, "linked_project_id": updates.get("linked_project_id")}
+
+
+def upvote_development_request(request_id: int) -> Dict[str, Any]:
+    """Citizen upvotes / endorses a development request to raise priority."""
+    with get_connection() as conn:
+        row = conn.execute("SELECT id, request_id, upvotes FROM development_requests WHERE id = ?", (request_id,)).fetchone()
+        if not row:
+            raise ValueError(f"Request with id {request_id} not found")
+        current_upvotes = int(row["upvotes"] or 1)
+        new_upvotes = current_upvotes + 1
+        conn.execute("UPDATE development_requests SET upvotes = ? WHERE id = ?", (new_upvotes, request_id))
+        conn.commit()
+
+    log_audit("development_request", request_id, None, "Citizen", "CITIZEN", "UPVOTE",
+              {"upvotes": current_upvotes}, {"upvotes": new_upvotes})
+    return {"id": request_id, "upvotes": new_upvotes, "status": "SUCCESS"}
+
+
+def get_demand_clusters_data() -> List[Dict[str, Any]]:
+    """Runs spatial-semantic clustering across eligible active development requests."""
+    from backend.app.services.demand_clustering import cluster_development_requests
+    # Exclude REJECTED requests from MP demand clustering
+    all_requests = get_development_requests(limit=500)
+    eligible_requests = [r for r in all_requests if r.get("status") != "REJECTED"]
+    return cluster_development_requests(eligible_requests)
+
+
+def adopt_cluster_by_mp(
+    cluster_id: str,
+    title: str,
+    estimated_cost: float,
+    mp_name: str,
+    constituency: str = "Varanasi",
+    district: str = "Varanasi",
+    state: str = "Uttar Pradesh",
+    sector: str = "Public Works",
+    official_notice_memo: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    MP converts a citizen demand cluster into an Official Recommendation Notice.
+    1. Generates official MP notice number (MP/{DIST}/2026/NOT-XXXX).
+    2. Provisions official Work in mplads_master.db (SQLAlchemy) with status 'RECOMMENDED'.
+    3. Provisions project_approvals proposal in operations.db so District Collector immediately sees it.
+    4. Transitions all member development requests to 'RECOMMENDED_BY_MP' linking notice & work_id.
+    """
+    import uuid
+    from datetime import datetime
+    
+    # 1. Look up cluster members
+    clusters = get_demand_clusters_data()
+    matched_cluster = next((c for c in clusters if c.get("cluster_id") == cluster_id), None)
+    
+    # If not found directly, try fuzzy cluster_id or fallback to member search
+    member_ids = []
+    if matched_cluster:
+        member_ids = [m["id"] for m in matched_cluster.get("members", []) if m.get("id")]
+        center_lat = matched_cluster.get("latitude") or 25.3176
+        center_lon = matched_cluster.get("longitude") or 82.9739
+        loc_desc = matched_cluster.get("location_description") or f"{district}, {state}"
+        cat = matched_cluster.get("category") or "Community Facility"
+    else:
+        center_lat, center_lon = 25.3176, 82.9739
+        loc_desc = f"{district}, {state}"
+        cat = "Public Works"
+
+    clean_dist = (district or "VAR")[:3].upper()
+    hex_code = uuid.uuid4().hex[:5].upper()
+    notice_number = f"MP/{clean_dist}/2026/NOT-{hex_code}"
+    new_work_id = f"MPLADS/REC/{clean_dist}/2026/{hex_code}"
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
+    # 2. Add to mplads_master.db (SQLAlchemy)
+    try:
+        from backend.app.db.database import SessionLocal
+        from backend.app.db.models import Work
+        db_session = SessionLocal()
+        try:
+            new_work = Work(
+                work_id=new_work_id,
+                work_description=f"[{notice_number}] {title}: Citizen Hotspot Demand Adoption (Para 4.1)",
+                state=state,
+                district=district,
+                constituency=constituency or f"{district} Lok Sabha",
+                mp_name=mp_name,
+                sector=cat or sector,
+                category=cat,
+                sanctioned_amount=float(estimated_cost or 1500000.0),
+                total_expenditure=0.0,
+                completion_percentage=0.0,
+                sanction_date=today_str,
+                status="RECOMMENDED",
+                composite_risk_score=10.0,
+                risk_level="LOW",
+                latitude=center_lat,
+                longitude=center_lon,
+                implementing_agency="Awaiting Tender Allocation (DRDA)"
+            )
+            db_session.add(new_work)
+            db_session.commit()
+            db_session.refresh(new_work)
+        finally:
+            db_session.close()
+    except Exception as e:
+        logger.warning(f"Could not persist Work in master DB during cluster adoption: {e}")
+
+    # 3. Create Proposal in operations.db project_approvals
+    memo_text = official_notice_memo or (
+        f"OFFICIAL RECOMMENDATION NOTICE {notice_number}\n"
+        f"Under Para 4.1 of MPLADS Guidelines 2016, Hon'ble MP {mp_name} hereby officially recommends "
+        f"the execution of '{title}' following overwhelming citizen consensus ({len(member_ids)} petitions) "
+        f"in {loc_desc}. Forwarded to the District Magistrate & District Authority for statutory feasibility verification "
+        f"and administrative sanction within 75 days."
+    )
+
+    app_id = create_proposal(
+        project_id=new_work_id,
+        proposed_by=f"Hon'ble MP {mp_name}",
+        estimated_cost=float(estimated_cost or 1500000.0),
+        proposal_description=f"[{notice_number}] {title} — Aggregated Citizen Demand Hotspot",
+        location_description=loc_desc,
+        latitude=center_lat,
+        longitude=center_lon,
+        user_role="MP",
+        remarks=memo_text
+    )
+
+    # 4. Update member development requests in operations.db
+    with get_connection() as conn:
+        if member_ids:
+            placeholders = ",".join("?" for _ in member_ids)
+            conn.execute(
+                f"""
+                UPDATE development_requests 
+                SET status = 'RECOMMENDED_BY_MP',
+                    linked_project_id = ?,
+                    cluster_id = ?,
+                    mp_notice_number = ?,
+                    mp_recommended_date = ?,
+                    decided_by = ?,
+                    decided_date = ?,
+                    decision_remarks = ?
+                WHERE id IN ({placeholders})
+                """,
+                [new_work_id, cluster_id, notice_number, today_str, mp_name, today_str, f"Adopted via Notice {notice_number}"] + member_ids
+            )
+        conn.commit()
+
+    # Log audit
+    log_audit(
+        "development_request_cluster",
+        cluster_id,
+        new_work_id,
+        mp_name,
+        "MP",
+        "MP_RECOMMENDATION_NOTICE_ISSUED",
+        None,
+        {"notice_number": notice_number, "member_count": len(member_ids), "work_id": new_work_id, "cost": estimated_cost}
+    )
+
+    # Invalidate cache so analytics / works update
+    try:
+        from backend.app.services.data_service import invalidate_cache
+        invalidate_cache()
+    except Exception:
+        pass
+
+    return {
+        "status": "SUCCESS",
+        "notice_number": notice_number,
+        "work_id": new_work_id,
+        "approval_id": app_id,
+        "cluster_id": cluster_id,
+        "title": title,
+        "estimated_cost": estimated_cost,
+        "petitions_adopted": len(member_ids),
+        "message": f"Official Recommendation Notice {notice_number} generated and transmitted to District Collectorate."
+    }
 
 
 # ---------------------------------------------------------------------------

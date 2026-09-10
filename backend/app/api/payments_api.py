@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException, Query, Body
+from fastapi import APIRouter, HTTPException, Query, Body, Depends
 from typing import Optional, Dict, Any, List
 from backend.app.db.operations_db import (
     ensure_project_operations,
     create_payment_request, get_payments, get_payment_by_id, take_payment_action, get_payment_actions
 )
+from backend.app.db.models import User
+from backend.app.api.auth import require_roles
 
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
 
@@ -17,9 +19,10 @@ async def request_payment(
     category: Optional[str] = Body(None),
     milestone_id: Optional[str] = Body(None),
     supporting_documents: Optional[List[Dict[str, Any]]] = Body(None),
-    requested_by: Optional[str] = Body("System"),
-    user_role: Optional[str] = Body("Contractor"),
-    remarks: Optional[str] = Body(None)
+    remarks: Optional[str] = Body(None),
+    requested_by: Optional[str] = Body(None),
+    user_role: Optional[str] = Body(None),
+    current_user: User = Depends(require_roles(["CONTRACTOR", "DISTRICT_COLLECTOR", "SUPER_ADMIN"]))
 ) -> Dict[str, Any]:
     """Submit payment request."""
     try:
@@ -32,8 +35,8 @@ async def request_payment(
             category=category,
             milestone_id=milestone_id,
             supporting_documents=supporting_documents,
-            requested_by=requested_by,
-            user_role=user_role,
+            requested_by=current_user.full_name,
+            user_role=current_user.role,
             remarks=remarks
         )
         return {"status": "success", "id": row_id}
@@ -65,19 +68,20 @@ async def get_payment(payment_id: int) -> Dict[str, Any]:
 @router.post("/{payment_id}/action")
 async def action_on_payment(
     payment_id: int,
-    user_name: str = Body(...),
-    user_role: str = Body(...),
     action: str = Body(...),
     new_status: str = Body(...),
     remarks: Optional[str] = Body(None),
-    transaction_reference: Optional[str] = Body(None)
+    transaction_reference: Optional[str] = Body(None),
+    user_name: Optional[str] = Body(None),
+    user_role: Optional[str] = Body(None),
+    current_user: User = Depends(require_roles(["DISTRICT_COLLECTOR", "VIGILANCE", "SUPER_ADMIN"]))
 ) -> Dict[str, Any]:
     """Take payment action."""
     try:
         res = take_payment_action(
             payment_id=payment_id,
-            user_name=user_name,
-            user_role=user_role,
+            user_name=current_user.full_name,
+            user_role=current_user.role,
             action=action,
             new_status=new_status,
             remarks=remarks,

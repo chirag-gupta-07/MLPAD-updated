@@ -17,12 +17,34 @@ import { TenderManagementPage } from './components/TenderManagementPage';
 import { ContractorPortal } from './components/ContractorPortal';
 import { MpDashboard } from './components/MpDashboard';
 import { CitizenPortal } from './components/CitizenPortal';
-
-
-
+import { AuthPage } from './components/AuthPage';
+import { IntroSplash } from './components/IntroSplash';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [introCompleted, setIntroCompleted] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return Boolean(localStorage.getItem('mplads_token') && localStorage.getItem('mplads_user'));
+  });
+  const [currentUser, setCurrentUser] = useState<any | null>(() => {
+    const u = localStorage.getItem('mplads_user');
+    return u ? JSON.parse(u) : null;
+  });
+
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const stored = localStorage.getItem('mplads_user');
+    if (stored) {
+      try {
+        const u = JSON.parse(stored);
+        if (u.role === 'MP') return 'mp-dashboard';
+        if (u.role === 'CONTRACTOR') return 'contractor';
+        if (u.role === 'CITIZEN') return 'citizen-portal';
+        if (u.role === 'DISTRICT_COLLECTOR') return 'tenders';
+        if (u.role === 'VIGILANCE') return 'evidence';
+      } catch (e) {}
+    }
+    return 'overview';
+  });
+
   const [summary, setSummary] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -40,8 +62,28 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem('mplads_token');
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      fetchSummary();
+    }
+  }, [isAuthenticated]);
+
+  const handleAuthSuccess = (user: any, token: string, landingTab: TabType) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    setActiveTab(landingTab);
     fetchSummary();
-  }, []);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('mplads_token');
+    localStorage.removeItem('mplads_user');
+    delete axios.defaults.headers.common['Authorization'];
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    setSelectedProject(null);
+  };
 
   const [tableVerificationQueue, setTableVerificationQueue] = useState(false);
   const [tableRiskFilter, setTableRiskFilter] = useState('');
@@ -63,6 +105,20 @@ export const App: React.FC = () => {
     setSelectedProject(work);
   };
 
+  // 0. Show Intro Splash Animation before anything else when user opens the site
+  if (!introCompleted) {
+    return <IntroSplash onComplete={() => setIntroCompleted(true)} />;
+  }
+
+  // 1. If not authenticated, show official Authorization Gateway Page
+  if (!isAuthenticated) {
+    return (
+      <ThemeProvider>
+        <AuthPage onAuthSuccess={handleAuthSuccess} />
+      </ThemeProvider>
+    );
+  }
+
   return (
     <ThemeProvider>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans transition-colors duration-200">
@@ -72,6 +128,12 @@ export const App: React.FC = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           openUploadModal={() => setShowUploadModal(true)}
+          onLogout={handleLogout}
+          onRoleChange={(newRole) => {
+            if (currentUser) {
+              setCurrentUser({ ...currentUser, role: newRole });
+            }
+          }}
         />
 
         {/* Main Content Area */}
@@ -190,7 +252,10 @@ export const App: React.FC = () => {
         {/* Footer */}
         <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4 text-center text-xs text-slate-500 dark:text-slate-400 transition-colors duration-200 mt-auto">
           <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span>Smart India Hackathon 2026 · Problem Statement <strong>SIH26102</strong></span>
+            <div className="flex items-center space-x-2">
+              <img src="/logo.png" alt="MLPAD" className="w-5 h-5 object-contain" />
+              <span>Smart India Hackathon 2026 · Problem Statement <strong>SIH26102</strong></span>
+            </div>
             <span>Ministry of Statistics and Programme Implementation (MoSPI) · DIID</span>
             <span className="font-semibold text-emerald-700 dark:text-emerald-500">AI Risk Intelligence & Decision Support Platform v1.0</span>
           </div>

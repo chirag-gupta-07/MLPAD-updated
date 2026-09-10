@@ -91,4 +91,10 @@ data/processed/*.parquet
 backend/app/db/*.csv
 backend/app/db/*.parquet
 
+# Root temporary and archive files
+*.zip
+*.db
+operations.db
+
+
 

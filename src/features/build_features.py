@@ -197,6 +197,43 @@ def build_all_features(master_path: Path, output_features_path: Path) -> pd.Data
     logger.info("Computing diagnostic monitoring metrics & ground truth targets...")
     df = compute_post_kickoff_metrics_and_targets(df)
     
+    logger.info("Computing temporal and advanced pre-kickoff features...")
+    df = df.sort_values('sanction_date').reset_index(drop=True)
+    
+    # Fast agency rolling ontime rate
+    df['is_completed'] = (df['status'] == 'COMPLETED').astype(int)
+    df['is_ontime'] = ((df['status'] == 'COMPLETED') & (df.get('target_is_delayed', 0) == 0)).astype(int)
+    
+    # Cumulative counts by agency
+    df['agency_total_works_before'] = df.groupby('implementing_agency').cumcount()
+    # Shift to not include current row, but cumsum includes current row
+    # To get prior ontime, we need to do cumsum - current row
+    df['agency_ontime_works_before'] = df.groupby('implementing_agency')['is_ontime'].cumsum() - df['is_ontime']
+    
+    df['agency_rolling_ontime_rate'] = np.where(
+        df['agency_total_works_before'] > 0,
+        df['agency_ontime_works_before'] / df['agency_total_works_before'],
+        0.5
+    )
+    
+    # Fast mp_concurrent_open_works
+    # Number of open works before this sanction date = total works before - completed works before
+    # Actually, a work is completed AT SOME POINT. The naive code used df['status'] != 'COMPLETED',
+    # which is the current final status of the project, NOT the status at sanction_date.
+    # The prompt explicitly specified: df['status'] != 'COMPLETED'. So it's just total works before - works before that are CURRENTLY completed.
+    
+    df['mp_total_works_before'] = df.groupby('mp_name').cumcount()
+    df['mp_completed_works_before'] = df.groupby('mp_name')['is_completed'].cumsum() - df['is_completed']
+    df['mp_concurrent_open_works'] = df['mp_total_works_before'] - df['mp_completed_works_before']
+
+    df.drop(columns=['is_completed', 'is_ontime', 'agency_total_works_before', 'agency_ontime_works_before', 'mp_total_works_before', 'mp_completed_works_before'], inplace=True)
+
+    df['sector_state_interaction'] = (df['sector'].astype(str) + '_' + df['state'].astype(str))
+    df['sanction_month'] = pd.to_datetime(df['sanction_date']).dt.month.fillna(6).astype(int)
+    
+    if 'rec_to_sanction_days' not in df.columns:
+        df['rec_to_sanction_days'] = (pd.to_datetime(df['sanction_date']) - pd.to_datetime(df['recommendation_date'])).dt.days.fillna(30)
+    
     output_features_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(output_features_path.with_suffix(".parquet"), index=False)
     df.to_csv(output_features_path.with_suffix(".csv"), index=False)

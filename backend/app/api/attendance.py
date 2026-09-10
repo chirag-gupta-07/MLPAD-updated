@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException, Query, Body
+from fastapi import APIRouter, HTTPException, Query, Body, Depends
 from typing import Optional, Dict, Any, List
 from backend.app.db.operations_db import (
     record_checkin, record_checkout, get_attendance_history, get_attendance_summary,
     get_responsible_persons, add_responsible_person
 )
+from backend.app.db.models import User
+from backend.app.api.auth import get_current_user
 
 router = APIRouter(prefix="/api/attendance", tags=["Attendance"])
 
@@ -15,29 +17,30 @@ async def list_responsible_persons(project_id: str = Query(...)) -> List[Dict[st
 @router.post("/checkin")
 async def checkin(
     project_id: str = Body(...),
-    person_id: Optional[int] = Body(None),
-    person_name: str = Body(...),
-    person_role: str = Body(...),
     latitude: float = Body(...),
     longitude: float = Body(...),
+    person_id: Optional[int] = Body(None),
     project_lat: Optional[float] = Body(None),
     project_lon: Optional[float] = Body(None),
-    allowed_radius: float = Body(500.0),
     remarks: Optional[str] = Body(None),
-    site_photo_path: Optional[str] = Body(None)
+    site_photo_path: Optional[str] = Body(None),
+    person_name: Optional[str] = Body(None),
+    person_role: Optional[str] = Body(None),
+    allowed_radius: Optional[float] = Body(None),
+    current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """Record geo-tagged check-in with GPS proximity validation."""
     try:
         return record_checkin(
             project_id=project_id,
             person_id=person_id,
-            person_name=person_name,
-            person_role=person_role,
+            person_name=current_user.full_name,
+            person_role=current_user.role,
             checkin_lat=latitude,
             checkin_lon=longitude,
             project_lat=project_lat,
             project_lon=project_lon,
-            allowed_radius=allowed_radius,
+            allowed_radius=500.0,
             site_photo_path=site_photo_path,
             remarks=remarks
         )
@@ -47,12 +50,13 @@ async def checkin(
 @router.post("/checkout")
 async def checkout(
     attendance_id: int = Body(...),
-    person_name: str = Body(...),
-    person_role: str = Body(...)
+    person_name: Optional[str] = Body(None),
+    person_role: Optional[str] = Body(None),
+    current_user: User = Depends(get_current_user)
 ) -> Dict[str, str]:
     """Record check-out."""
     try:
-        record_checkout(attendance_id, person_name, person_role)
+        record_checkout(attendance_id, current_user.full_name, current_user.role)
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

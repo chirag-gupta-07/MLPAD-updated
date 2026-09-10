@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ShieldAlert, BarChart3, Map, Bot, Upload, RefreshCw, Camera,
-  Sun, Moon, Monitor, Gavel, Briefcase, UserCheck, Landmark, HeartHandshake
+  Sun, Moon, Monitor, Gavel, Briefcase, UserCheck, Landmark, HeartHandshake, LogOut
 } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 import axios from 'axios';
@@ -25,31 +25,53 @@ interface NavbarProps {
   setActiveTab: (tab: TabType) => void;
   openUploadModal: () => void;
   onRoleChange?: (role: string, personaKey: string) => void;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   openUploadModal,
-  onRoleChange
+  onRoleChange,
+  onLogout
 }) => {
   const { theme, setTheme } = useTheme();
   const [isResetting, setIsResetting] = useState(false);
-  const [activePersona, setActivePersona] = useState<string>('admin');
-  const [activeRole, setActiveRole] = useState<string>('SUPER_ADMIN');
+  const [activePersona, setActivePersona] = useState<string>(() => {
+    const stored = localStorage.getItem('mplads_user');
+    if (stored) {
+      try {
+        const u = JSON.parse(stored);
+        if (u.role === 'MP') return 'mp';
+        if (u.role === 'CONTRACTOR') return 'contractor';
+        if (u.role === 'CITIZEN') return 'citizen';
+        if (u.role === 'DISTRICT_COLLECTOR') return 'dno';
+        if (u.role === 'VIGILANCE') return 'vigilance';
+      } catch (e) {}
+    }
+    return 'admin';
+  });
+  const [activeRole, setActiveRole] = useState<string>(() => {
+    const stored = localStorage.getItem('mplads_user');
+    if (stored) {
+      try {
+        return JSON.parse(stored).role || 'SUPER_ADMIN';
+      } catch (e) {}
+    }
+    return 'SUPER_ADMIN';
+  });
   const [switching, setSwitching] = useState(false);
 
   // Master list of tabs
   const allTabs: { id: TabType; label: string; allowedRoles?: string[] }[] = [
     { id: 'overview', label: 'Dashboard', allowedRoles: ['SUPER_ADMIN', 'DISTRICT_COLLECTOR', 'VIGILANCE'] },
     { id: 'mp-dashboard', label: 'MP Purse & Actions', allowedRoles: ['SUPER_ADMIN', 'MP'] },
-    { id: 'citizen-portal', label: 'Jan Samwaad', allowedRoles: ['SUPER_ADMIN', 'CITIZEN'] },
+    { id: 'public-requests', label: 'Jan Samwaad (Public Requests)', allowedRoles: ['SUPER_ADMIN', 'CITIZEN', 'MP', 'DISTRICT_COLLECTOR', 'VIGILANCE'] },
     { id: 'works', label: 'Projects', allowedRoles: ['SUPER_ADMIN', 'DISTRICT_COLLECTOR', 'MP', 'VIGILANCE'] },
     { id: 'tenders', label: 'E-Tenders', allowedRoles: ['SUPER_ADMIN', 'DISTRICT_COLLECTOR', 'VIGILANCE'] },
     { id: 'contractor', label: 'Contractor Portal', allowedRoles: ['SUPER_ADMIN', 'CONTRACTOR'] },
     { id: 'approvals', label: 'Approvals', allowedRoles: ['SUPER_ADMIN', 'DISTRICT_COLLECTOR'] },
     { id: 'payments', label: 'Payments', allowedRoles: ['SUPER_ADMIN', 'DISTRICT_COLLECTOR'] },
-    { id: 'public-requests', label: 'Public Demands', allowedRoles: ['SUPER_ADMIN', 'MP', 'DISTRICT_COLLECTOR'] },
     { id: 'gis', label: 'GIS Map', allowedRoles: ['SUPER_ADMIN', 'MP', 'DISTRICT_COLLECTOR', 'CONTRACTOR', 'VIGILANCE', 'CITIZEN'] },
     { id: 'evidence', label: 'Ground Evidence', allowedRoles: ['SUPER_ADMIN', 'DISTRICT_COLLECTOR', 'VIGILANCE', 'CITIZEN'] },
     { id: 'assistant', label: 'AI Copilot', allowedRoles: ['SUPER_ADMIN', 'MP', 'DISTRICT_COLLECTOR', 'VIGILANCE'] },
@@ -82,7 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       } else if (personaKey === 'mp') {
         setActiveTab('mp-dashboard');
       } else if (personaKey === 'citizen') {
-        setActiveTab('citizen-portal');
+        setActiveTab('public-requests');
       } else if (personaKey === 'dno') {
         setActiveTab('tenders');
       } else {
@@ -96,7 +118,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   useEffect(() => {
-    handlePersonaChange('admin');
+    const token = localStorage.getItem('mplads_token');
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
   }, []);
 
   const handleResetDemo = async () => {
@@ -123,9 +148,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           
           {/* Logo & Branding */}
           <div className="flex items-center space-x-2.5 shrink-0">
-            <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center shadow-sm">
-              <ShieldAlert className="w-5 h-5 text-white" />
-            </div>
+            <img
+              src="/logo.png"
+              alt="MLPAD Logo"
+              className="w-10 h-10 object-contain drop-shadow-xs"
+            />
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">MLPAD</span>
@@ -211,6 +238,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <Upload className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Upload Data</span>
+              </button>
+            )}
+
+            {/* Sign Out Button */}
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                title="Sign out to official Authorization Gateway"
+                className="flex items-center space-x-1.5 bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/40 text-slate-700 hover:text-rose-600 dark:text-slate-300 dark:hover:text-rose-300 border border-slate-200 dark:border-slate-700 hover:border-rose-200 dark:hover:border-rose-800 px-2.5 py-1.5 rounded-md text-xs font-semibold transition whitespace-nowrap"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                <span className="hidden sm:inline">Sign Out</span>
               </button>
             )}
           </div>

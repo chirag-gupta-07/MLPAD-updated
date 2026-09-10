@@ -16,8 +16,12 @@
     "cost_vs_peer_median_ratio",
     "peer_cost_zscore",
     "agency_work_volume",
+    "agency_rolling_ontime_rate",
+    "mp_concurrent_open_works",
+    "sanction_month",
     "sector",
-    "state"
+    "state",
+    "sector_state_interaction"
   ],
   "removed_leaked_features": [
     "schedule_overrun_ratio",
@@ -31,56 +35,74 @@
   "best_model": "GradientBoosting",
   "model_comparison": {
     "Baseline_LogisticRegression": {
-      "Accuracy": 89.8,
-      "Precision": 0.0,
-      "Recall": 0.0,
-      "F1-Score": 0.0,
-      "ROC-AUC": 0.6874,
-      "PR-AUC": 0.1806,
+      "Accuracy": 80.71,
+      "Precision": 32.35,
+      "Recall": 81.66,
+      "F1-Score": 46.34,
+      "ROC-AUC": 0.8922,
+      "PR-AUC": 0.5677,
       "Confusion_Matrix": [
         [
-          17754,
-          0
+          14310,
+          3444
         ],
         [
-          2017,
-          0
+          370,
+          1647
         ]
       ]
     },
     "RandomForest": {
-      "Accuracy": 90.88,
-      "Precision": 91.44,
-      "Recall": 11.65,
-      "F1-Score": 20.67,
-      "ROC-AUC": 0.8201,
-      "PR-AUC": 0.4699,
+      "Accuracy": 87.08,
+      "Precision": 43.45,
+      "Recall": 88.4,
+      "F1-Score": 58.26,
+      "ROC-AUC": 0.94,
+      "PR-AUC": 0.6867,
       "Confusion_Matrix": [
         [
-          17732,
-          22
+          15433,
+          2321
         ],
         [
-          1782,
-          235
+          234,
+          1783
         ]
       ]
     },
     "GradientBoosting": {
-      "Accuracy": 91.66,
-      "Precision": 98.94,
-      "Recall": 18.49,
-      "F1-Score": 31.16,
-      "ROC-AUC": 0.8371,
-      "PR-AUC": 0.5301,
+      "Accuracy": 94.89,
+      "Precision": 88.69,
+      "Recall": 57.16,
+      "F1-Score": 69.52,
+      "ROC-AUC": 0.9681,
+      "PR-AUC": 0.8346,
       "Confusion_Matrix": [
         [
-          17750,
-          4
+          17607,
+          147
         ],
         [
-          1644,
-          373
+          864,
+          1153
+        ]
+      ]
+    },
+    "XGBoost": {
+      "Accuracy": 91.29,
+      "Precision": 54.25,
+      "Recall": 93.41,
+      "F1-Score": 68.63,
+      "ROC-AUC": 0.9764,
+      "PR-AUC": 0.8614,
+      "Confusion_Matrix": [
+        [
+          16165,
+          1589
+        ],
+        [
+          133,
+          1884
         ]
       ]
     }

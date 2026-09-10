@@ -49,38 +49,44 @@ flowchart TB
         A2["Government CSV / Excel Uploads"] --> B1
         A3["Offline Demo Benchmark Lake (Parquet)"] --> B1
         B1 --> C1["Data Preprocessing & Normalization"]
-        C1 --> D1["Feature Engineering Lake (51 Pre-Kickoff Features)"]
+        C1 --> D1["Feature Engineering Lake (56 Pre-Kickoff Features)"]
     end
 
     subgraph AI & ML Suite
-        D1 --> M1["Financial Anomaly Engine<br/>(Isolation Forest + RobustScaler)"]
-        D1 --> M2["Predictive Delay Classifier<br/>(Random Forest / XGBoost)"]
-        D1 --> M3["Duplicate Detection Index<br/>(TF-IDF N-Grams + Haversine GIS)"]
+        D1 --> M1["Financial Anomaly Engine<br/>(Isolation Forest + Benford's Law)"]
+        D1 --> M2["Predictive Delay Classifier<br/>(Leakage-Free GradientBoosting/RF/XGBoost)"]
+        D1 --> M3["Semantic & GIS Duplicate Index<br/>(MiniLM Embeddings + TF-IDF + Haversine)"]
         D1 --> M4["Utilization & Stalling Engine<br/>(Disbursement vs Progress Rules)"]
+        D1 --> M5["Relational Network Fraud Engine<br/>(NetworkX Degree Centrality & Cartel Clusters)"]
+        D1 --> M6["Computer Vision Ground Truth Engine<br/>(pHash Image Deduplication + Zero-Shot CLIP)"]
         
-        M1 --> FUSION["Multi-Signal Composite Risk Engine<br/>(Weighted Policy Matrix)"]
+        M1 --> FUSION["Multi-Signal Composite Risk Engine<br/>(Calibrated Weighted Policy Matrix)"]
         M2 --> FUSION
         M3 --> FUSION
         M4 --> FUSION
+        M5 --> FUSION
+        M6 --> FUSION
         
-        FUSION --> XAI["Explainable AI (XAI) Engine<br/>(Plain-English Evidence Justifications)"]
+        FUSION --> XAI["Explainable AI (XAI) & RAG Engine<br/>(SHAP Contributions + Policy Citations)"]
     end
 
     subgraph Backend Services [FastAPI REST Layer]
         XAI --> S1["In-Memory High Performance Query Engine"]
         S1 --> API1["/api/works & /api/works/{id}"]
         S1 --> API2["/api/risk/summary & /api/risk/clusters"]
-        S1 --> API3["/api/map/markers (GeoJSON GIS)"]
-        S1 --> API4["/api/assistant/query (Conversational AI)"]
-        S1 --> API5["/api/data/upload (Dynamic Aliasing)"]
+        S1 --> API3["/api/risk/network & /api/risk/benford-analysis"]
+        S1 --> API4["/api/map/markers (GeoJSON GIS)"]
+        S1 --> API5["/api/assistant/query (RAG Policy Grounded Copilot)"]
+        S1 --> API6["/api/citizen-evidence (pHash + CLIP CV Verification)"]
+        S1 --> API7["/api/tenders & /api/approvals (RBAC & Cartel Gated)"]
     end
 
     subgraph Frontend Dashboard [React 18 + Vite + Tailwind + Leaflet]
         API1 --> UI1["Interactive Filterable Works DataGrid"]
         API2 --> UI2["Macroeconomic KPI Tiles & Distribution Charts"]
-        API3 --> UI3["Interactive Leaflet GIS Heatmap"]
-        API4 --> UI4["Natural Language AI Copilot Drawer"]
-        API5 --> UI5["Work Detail & XAI Evidence Modal"]
+        API3 --> UI3["Interactive Leaflet GIS Heatmap & Network Graph"]
+        API5 --> UI4["Grounded AI Copilot with Statutory Policy Citations"]
+        API6 --> UI5["Work Detail, Ground Evidence & XAI Evidence Modal"]
     end
 ```
 
@@ -250,8 +256,13 @@ MLPAD/
 | `GET` | `/api/works/{work_id}` | Detailed work record with XAI evidence breakdowns |
 | `GET` | `/api/risk/summary` | Macroeconomic KPIs, risk tier distributions, and sector breakdowns |
 | `GET` | `/api/risk/clusters` | Geographic and implementing agency high-risk cluster detection |
+| `GET` | `/api/risk/network` | Contractor–agency–MP relationship graph with degree centrality & anomaly scoring |
+| `GET` | `/api/risk/benford-analysis` | Forensic Benford's Law distribution analysis on expenditures |
 | `GET` | `/api/map/markers` | GeoJSON geospatial markers with GPS coordinates & risk levels |
-| `POST` | `/api/assistant/query` | Natural language conversational AI assistant query |
+| `POST` | `/api/assistant/query` | RAG-grounded natural language conversational AI assistant citing statutory rules |
+| `POST` | `/api/citizen-evidence` | Multipart evidence upload with pHash duplicate detection & zero-shot CLIP classification |
+| `GET` | `/api/citizen-evidence` | Enriched ground evidence reports with GPS proximity & construction progress cross-checks |
+| `POST` | `/api/tenders/award` | E-procurement award engine enforcing AI qualification & cartel warnings |
 | `POST` | `/api/data/upload` | Multipart CSV / XLSX file upload with dynamic column aliasing |
 
 ---

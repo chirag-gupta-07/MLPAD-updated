@@ -1,13 +1,14 @@
-from fastapi import APIRouter, HTTPException, Query, Body
+from fastapi import APIRouter, HTTPException, Query, Body, Depends
 from typing import Optional, Dict, Any, List
 from backend.app.db.operations_db import submit_daily_update, get_daily_updates
+from backend.app.db.models import User
+from backend.app.api.auth import require_roles
 
 router = APIRouter(prefix="/api/daily-updates", tags=["Daily Updates"])
 
 @router.post("/")
 async def submit_update(
     project_id: str = Body(...),
-    person_name: str = Body(...),
     date: str = Body(...),
     work_description: str = Body(...),
     person_id: Optional[int] = Body(None),
@@ -23,13 +24,15 @@ async def submit_update(
     delay_reason: Optional[str] = Body(None),
     expected_next_activity: Optional[str] = Body(None),
     site_photos: Optional[List[str]] = Body(None),
-    remarks: Optional[str] = Body(None)
+    remarks: Optional[str] = Body(None),
+    person_name: Optional[str] = Body(None),
+    current_user: User = Depends(require_roles(["CONTRACTOR", "DISTRICT_COLLECTOR", "SUPER_ADMIN"]))
 ) -> Dict[str, Any]:
     """Submit daily work update."""
     try:
         row_id = submit_daily_update(
             project_id=project_id,
-            person_name=person_name,
+            person_name=current_user.full_name,
             date=date,
             work_description=work_description,
             person_id=person_id,

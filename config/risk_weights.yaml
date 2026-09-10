@@ -4,7 +4,14 @@ weights:
   delay: 0.25
   duplicate: 0.20
   utilization: 0.15
-  stall: 0.10
+  citizen_evidence: 0.08
+
+duplicate_detection:
+  tfidf_cosine: 0.35
+  embedding_cosine: 0.25
+  cost_similarity: 0.20
+  location_proximity: 0.12
+  temporal_proximity: 0.08
 
 thresholds:
   high_risk_min: 70.0

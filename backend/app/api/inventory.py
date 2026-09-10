@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, Body
+from fastapi import APIRouter, HTTPException, Query, Body, Depends
 from typing import Optional, Dict, Any, List
 from backend.app.db.operations_db import (
     ensure_project_operations,
@@ -6,6 +6,8 @@ from backend.app.db.operations_db import (
     record_site_transaction, get_site_inventory, get_site_inventory_transactions,
     get_material_reconciliation
 )
+from backend.app.db.models import User
+from backend.app.api.auth import get_current_user, require_roles
 
 router = APIRouter(prefix="/api/inventory", tags=["Inventory"])
 
@@ -24,7 +26,8 @@ async def record_supply(
     contracted_rate: Optional[float] = Body(None),
     actual_rate: Optional[float] = Body(None),
     quality_document: Optional[str] = Body(None),
-    verification_status: str = Body("PENDING")
+    verification_status: Optional[str] = Body(None),
+    current_user: User = Depends(require_roles(["CONTRACTOR", "DISTRICT_COLLECTOR", "SUPER_ADMIN"]))
 ) -> Dict[str, Any]:
     """Record agency supply delivery."""
     try:
@@ -42,7 +45,7 @@ async def record_supply(
             contracted_rate=contracted_rate,
             actual_rate=actual_rate,
             quality_document=quality_document,
-            verification_status=verification_status
+            verification_status="PENDING"
         )
         return {"status": "success", "id": row_id}
     except Exception as e:
@@ -81,7 +84,8 @@ async def record_transaction(
     transaction_type: str = Body(...),
     quantity: float = Body(...),
     reference_note: Optional[str] = Body(None),
-    recorded_by: Optional[str] = Body(None)
+    recorded_by: Optional[str] = Body(None),
+    current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """Record site inventory transaction."""
     try:
@@ -93,7 +97,7 @@ async def record_transaction(
             transaction_type=transaction_type,
             quantity=quantity,
             reference_note=reference_note,
-            recorded_by=recorded_by
+            recorded_by=current_user.full_name
         )
         return {"status": "success", "id": row_id}
     except Exception as e:

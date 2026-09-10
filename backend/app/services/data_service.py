@@ -10,11 +10,13 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import pandas as pd
 import numpy as np
+import threading
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DATA_PATH = PROJECT_ROOT / "backend" / "app" / "db" / "master_evaluated_works.parquet"
 FALLBACK_PATH = PROJECT_ROOT / "data" / "processed" / "final_evaluated_works.parquet"
 
+_cache_lock = threading.RLock()
 _cached_df: Optional[pd.DataFrame] = None
 _cached_risk_summary: Optional[Dict[str, Any]] = None
 _default_map_markers: Optional[List[Dict[str, Any]]] = None
@@ -112,26 +114,20 @@ def get_dataframe() -> pd.DataFrame:
     if _cached_df is not None:
         return _cached_df
         
-    if DATA_PATH.exists():
-        df_base = pd.read_parquet(DATA_PATH)
-    elif FALLBACK_PATH.exists():
-        df_base = pd.read_parquet(FALLBACK_PATH)
-    else:
-        # Fallback to demo
-        demo_path = PROJECT_ROOT / "data" / "demo" / "mplads_demo_dataset.parquet"
-        df_base = pd.read_parquet(demo_path)
-        
-    df_base = _ensure_dataframe_schema(df_base)
-
-    # Prepend dynamic works from DB so newly proposed/sanctioned/awarded works appear at the top
-    dyn = _get_dynamic_db_works()
-    if dyn:
-        df_dyn = pd.DataFrame(dyn)
-        df_dyn = _ensure_dataframe_schema(df_dyn)
-        dyn_ids = set(df_dyn["work_id"].unique())
-        df_base = df_base[~df_base["work_id"].isin(dyn_ids)]
-        _cached_df = pd.concat([df_dyn, df_base], ignore_index=True)
-    else:
+    with _cache_lock:
+        if _cached_df is not None:
+            return _cached_df
+            
+        if DATA_PATH.exists():
+            df_base = pd.read_parquet(DATA_PATH)
+        elif FALLBACK_PATH.exists():
+            df_base = pd.read_parquet(FALLBACK_PATH)
+        else:
+            # Fallback to demo
+            demo_path = PROJECT_ROOT / "data" / "demo" / "mplads_demo_dataset.parquet"
+            df_base = pd.read_parquet(demo_path)
+            
+        df_base = _ensure_dataframe_schema(df_base)
         _cached_df = df_base
 
     return _cached_df
@@ -147,6 +143,14 @@ def invalidate_cache():
     _work_id_to_idx = None
     _work_records_cache.clear()
     _spatial_index = None
+
+    # Trigger background rebuild so next request doesn't pay the cold-cache cost
+    def _bg_rebuild():
+        try:
+            get_dataframe()
+        except Exception:
+            pass
+    threading.Thread(target=_bg_rebuild, daemon=True).start()
 
 
 def reload_dataframe() -> pd.DataFrame:
@@ -167,38 +171,9 @@ def get_works_paginated(
 ) -> Dict[str, Any]:
     df = get_dataframe().copy()
     
-    # Ensure dynamic MP proposals, tendered works, and projects with active payments are prioritized on Page 1
-    dynamic_work_ids = set()
-    try:
-        from backend.app.db.database import SessionLocal
-        from backend.app.db.models import Work, WorkOrder
-        with SessionLocal() as sdb:
-            dynamic_work_ids.update([r[0] for r in sdb.query(Work.work_id).filter(Work.work_id.like("MPLADS/REC/%")).all()])
-            dynamic_work_ids.update([r[0] for r in sdb.query(WorkOrder.work_id).all() if r[0]])
-        from backend.app.db.operations_db import get_connection
-        with get_connection() as conn:
-            dynamic_work_ids.update([r[0] for r in conn.execute("SELECT DISTINCT project_id FROM payments").fetchall() if r[0]])
-    except Exception:
-        pass
-
-    def _calc_priority(r):
-        wid = str(r.get("work_id", ""))
-        exp = float(r.get("total_expenditure", 0.0) or 0.0)
-        st = str(r.get("status", ""))
-        if wid.startswith("MPLADS/REC/") or wid.startswith("WORK-"):
-            if exp > 0 or st in ("IN_PROGRESS", "COMPLETED"):
-                return 4  # Highest: Live project with approved payments / active ground execution
-            return 3      # High: Live project recommended / sanctioned / tendered
-        if wid in dynamic_work_ids:
-            return 2      # Operational projects with payments or approvals
-        return 0          # Historical background dataset
-
-    df["_priority"] = df.apply(_calc_priority, axis=1)
-
-    # Verification Queue filter: works that have high risk or premature advance or high delay, while keeping active dynamic works visible
+    # Verification Queue filter: works that have high risk or premature advance or high delay
     if verification_queue:
         df = df[
-            (df["_priority"] == 1) |
             (df["risk_level"] == "HIGH") | 
             (df["composite_risk_score"] >= 45.0) |
             (df["utilization_anomaly_score"] >= 50.0) |
@@ -226,10 +201,12 @@ def get_works_paginated(
         )
         df = df[mask]
         
-    # Sorting: Dynamic active/paid projects always surface on Page 1 first
+    # Sorting: Sort by selected column or composite risk score
     ascending = (sort_order.lower() == "asc")
-    target_sort_col = sort_by if (sort_by in df.columns) else "composite_risk_score"
-    df = df.sort_values(by=["_priority", target_sort_col], ascending=[False, ascending])
+    if sort_by in df.columns:
+        df = df.sort_values(by=sort_by, ascending=ascending)
+    else:
+        df = df.sort_values(by="composite_risk_score", ascending=False)
         
     total_count = len(df)
     total_pages = max(1, (total_count + page_size - 1) // page_size)
@@ -329,29 +306,34 @@ def _ensure_spatial_index():
     global _spatial_index
     if _spatial_index is not None:
         return _spatial_index
-    df = get_dataframe()
-    if df.empty or "latitude" not in df.columns or "longitude" not in df.columns:
-        _spatial_index = {}
-        return _spatial_index
-    lats = df["latitude"].fillna(0).to_numpy(dtype=np.float64)
-    lons = df["longitude"].fillna(0).to_numpy(dtype=np.float64)
-    work_ids = df["work_id"].astype(str).to_numpy()
-    descs = df["work_description"].fillna("").astype(str).to_numpy()
-    sectors = df["sector"].fillna("Infrastructure").astype(str).to_numpy() if "sector" in df.columns else np.array(["Infrastructure"] * len(df))
-    status_col = "status" if "status" in df.columns else "work_status"
-    statuses = df[status_col].fillna("Ongoing").astype(str).to_numpy() if status_col in df.columns else np.array(["Ongoing"] * len(df))
-    amounts = df["sanctioned_amount"].fillna(0).to_numpy(dtype=np.float64) if "sanctioned_amount" in df.columns else np.zeros(len(df), dtype=np.float64)
+        
+    with _cache_lock:
+        if _spatial_index is not None:
+            return _spatial_index
+            
+        df = get_dataframe()
+        if df.empty or "latitude" not in df.columns or "longitude" not in df.columns:
+            _spatial_index = {}
+            return _spatial_index
+        lats = df["latitude"].fillna(0).to_numpy(dtype=np.float64)
+        lons = df["longitude"].fillna(0).to_numpy(dtype=np.float64)
+        work_ids = df["work_id"].astype(str).to_numpy()
+        descs = df["work_description"].fillna("").astype(str).to_numpy()
+        sectors = df["sector"].fillna("Infrastructure").astype(str).to_numpy() if "sector" in df.columns else np.array(["Infrastructure"] * len(df))
+        status_col = "status" if "status" in df.columns else "work_status"
+        statuses = df[status_col].fillna("Ongoing").astype(str).to_numpy() if status_col in df.columns else np.array(["Ongoing"] * len(df))
+        amounts = df["sanctioned_amount"].fillna(0).to_numpy(dtype=np.float64) if "sanctioned_amount" in df.columns else np.zeros(len(df), dtype=np.float64)
 
-    _spatial_index = {
-        "lats": lats,
-        "lons": lons,
-        "work_ids": work_ids,
-        "descs": descs,
-        "sectors": sectors,
-        "statuses": statuses,
-        "amounts": amounts,
-        "valid_mask": (lats != 0) & (lons != 0)
-    }
+        _spatial_index = {
+            "lats": lats,
+            "lons": lons,
+            "work_ids": work_ids,
+            "descs": descs,
+            "sectors": sectors,
+            "statuses": statuses,
+            "amounts": amounts,
+            "valid_mask": (lats != 0) & (lons != 0)
+        }
     return _spatial_index
 
 

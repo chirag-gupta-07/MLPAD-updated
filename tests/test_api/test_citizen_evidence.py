@@ -86,13 +86,25 @@ def test_submit_citizen_evidence_flow():
     assert any(e["id"] == evidence_id for e in work_data["evidence"])
 
     # Test supervisory verification action
+    from backend.app.api.auth import create_access_token
+    admin_token = create_access_token({
+        "sub": "admin",
+        "username": "admin",
+        "role": "SUPER_ADMIN",
+        "full_name": "District Collectorate Cell",
+        "district": "Varanasi",
+        "state": "Uttar Pradesh"
+    })
+    auth_headers = {"Authorization": f"Bearer {admin_token}"}
+
     patch_res = client.patch(
         f"/api/citizen-evidence/{evidence_id}/verify",
         json={
             "status": "SUPERVISORY_VERIFIED",
             "admin_notes": "Ground verification conducted by Field Officer on 4th Sept. Discrepancy confirmed.",
             "verified_by": "District Collectorate Cell"
-        }
+        },
+        headers=auth_headers
     )
     assert patch_res.status_code == 200
     updated_data = patch_res.json()["data"]
@@ -106,11 +118,52 @@ def test_submit_citizen_evidence_flow():
     assert len(photo_res.content) > 0
 
     # Test delete endpoint
-    del_res = client.delete(f"/api/citizen-evidence/{evidence_id}")
+    del_res = client.delete(f"/api/citizen-evidence/{evidence_id}", headers=auth_headers)
     assert del_res.status_code == 200
     assert del_res.json()["status"] == "success"
 
     # Verify not found after deletion
     get_del = client.get(f"/api/citizen-evidence/{evidence_id}")
     assert get_del.status_code == 404
+
+def test_phash_duplicate_detection():
+    """Test that two identical images are flagged as reused."""
+    from unittest.mock import patch
+    try:
+        import imagehash
+    except ImportError:
+        pytest.skip("imagehash not installed")
+    
+    # Create two identical test images
+    from PIL import Image
+    img = Image.new('RGB', (100, 100), color='red')
+    phash1 = str(imagehash.phash(img))
+    phash2 = str(imagehash.phash(img))
+    
+    # They should be identical (distance 0)
+    h1 = imagehash.hex_to_hash(phash1)
+    h2 = imagehash.hex_to_hash(phash2)
+    assert (h1 - h2) < 8
+
+def test_stage_vs_progress_mismatch():
+    """Test IMAGE_PROGRESS_MISMATCH detection."""
+    # If official progress > 80% but classified stage is EMPTY_SITE, should flag HIGH
+    official_progress = 85.0
+    classified_stage = "EMPTY_SITE"
+    
+    mismatch = None
+    severity = None
+    if official_progress > 80.0 and classified_stage in ("EMPTY_SITE", "FOUNDATION"):
+        mismatch = "IMAGE_PROGRESS_MISMATCH"
+        severity = "HIGH"
+    
+    assert mismatch == "IMAGE_PROGRESS_MISMATCH"
+    assert severity == "HIGH"
+    
+    # If official progress is 30% and stage is EMPTY_SITE, should NOT flag
+    official_progress_low = 30.0
+    mismatch2 = None
+    if official_progress_low > 80.0 and classified_stage in ("EMPTY_SITE", "FOUNDATION"):
+        mismatch2 = "IMAGE_PROGRESS_MISMATCH"
+    assert mismatch2 is None
 

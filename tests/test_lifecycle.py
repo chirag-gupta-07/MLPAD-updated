@@ -4,11 +4,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest
 from backend.app.db.lifecycle_db import init_lifecycle_db, get_project_lifecycle, add_field_inspection, record_audit_event
+from backend.app.db.seed_scenarios import seed_demo_scenarios
 from backend.app.services.verification_engine import calculate_cross_source_consistency
 
 
 def test_lifecycle_db_init_and_query():
-    init_lifecycle_db()
+    seed_demo_scenarios()
     w_id = 'WS/MP498/2024-2025/133447'
     data = get_project_lifecycle(w_id)
     assert data is not None

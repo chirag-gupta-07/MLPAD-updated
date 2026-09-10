@@ -3,7 +3,7 @@ FastAPI REST Router for Feature 7.6: Citizen Evidence & Ground Truth Verificatio
 Supports citizen multipart photographic submissions, supervisory review, and social audit feeds.
 """
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query, Body
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query, Body, Depends
 from fastapi.responses import FileResponse
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
@@ -17,6 +17,8 @@ from backend.app.services.citizen_evidence_service import (
     get_evidence_stats,
     seed_demo_citizen_evidence
 )
+from backend.app.db.models import User
+from backend.app.api.auth import require_roles
 
 router = APIRouter(prefix="/api/citizen-evidence", tags=["Citizen Evidence"])
 
@@ -109,13 +111,15 @@ def get_single_evidence(evidence_id: str) -> Dict[str, Any]:
 @router.patch("/{evidence_id}/verify", summary="District Collector / Nodal Authority verification action")
 def verify_citizen_evidence(
     evidence_id: str,
-    payload: VerificationUpdateRequest
+    payload: VerificationUpdateRequest,
+    current_user: User = Depends(require_roles(["DISTRICT_COLLECTOR", "SUPER_ADMIN"]))
 ) -> Dict[str, Any]:
+    verified_by = current_user.full_name or payload.verified_by
     updated = update_evidence_verification(
         evidence_id=evidence_id,
         status=payload.status,
         admin_notes=payload.admin_notes,
-        verified_by=payload.verified_by
+        verified_by=verified_by
     )
     if not updated:
         raise HTTPException(status_code=404, detail=f"Evidence with ID {evidence_id} not found")
@@ -135,7 +139,10 @@ def get_evidence_photo(filename: str):
 
 
 @router.delete("/{evidence_id}", summary="Delete a citizen evidence report")
-def delete_citizen_evidence(evidence_id: str) -> Dict[str, Any]:
+def delete_citizen_evidence(
+    evidence_id: str,
+    current_user: User = Depends(require_roles(["SUPER_ADMIN"]))
+) -> Dict[str, Any]:
     success = delete_evidence(evidence_id)
     if not success:
         raise HTTPException(status_code=404, detail=f"Evidence with ID {evidence_id} not found")
