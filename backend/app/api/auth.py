@@ -334,3 +334,79 @@ def get_profile(current_user: User = Depends(get_current_user)):
         "state": current_user.state,
         "constituency": current_user.constituency
     }
+
+
+@router.post("/register", response_model=TokenResponse)
+def register(req: RegisterRequest, db: Session = Depends(get_db)):
+    # Check if username or email already exists
+    existing_user = db.query(User).filter(
+        (User.username == req.username) | (User.email == req.email)
+    ).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email is already registered."
+        )
+
+    user_id = f"usr_{uuid.uuid4().hex[:10]}"
+    valid_role = req.role if req.role in ["SUPER_ADMIN", "DISTRICT_COLLECTOR", "MP", "CONTRACTOR", "VIGILANCE", "CITIZEN"] else "CITIZEN"
+
+    new_user = User(
+        id=user_id,
+        username=req.username.strip(),
+        email=req.email.strip(),
+        hashed_password=get_password_hash(req.password),
+        full_name=req.full_name.strip(),
+        role=valid_role,
+        designation=req.designation or ("Authorized Stakeholder" if valid_role != "CITIZEN" else "Citizen Auditor"),
+        state=req.state or "Uttar Pradesh",
+        district=req.district or "Varanasi",
+        constituency=req.constituency or "Varanasi Lok Sabha"
+    )
+    db.add(new_user)
+
+    if valid_role == "CONTRACTOR":
+        c_profile = ContractorProfile(
+            id=f"cnt_{user_id}",
+            user_id=user_id,
+            firm_name=req.firm_name or f"{req.full_name} Enterprises",
+            license_class=req.license_class or "Class-B",
+            pan=req.pan or "AAACG1234F",
+            gstin=req.gstin or "09AAACG1234F1Z5",
+            kyc_status="ACTIVE",
+            contact_email=req.email,
+            contact_phone="+91 98765 43210",
+            performance_score=85.0,
+            total_works_completed=5
+        )
+        db.add(c_profile)
+
+    db.commit()
+
+    token_payload = {
+        "sub": new_user.id,
+        "username": new_user.username,
+        "role": new_user.role,
+        "full_name": new_user.full_name,
+        "email": new_user.email,
+        "district": new_user.district,
+        "state": new_user.state
+    }
+    token = create_access_token(token_payload)
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": new_user.id,
+            "username": new_user.username,
+            "full_name": new_user.full_name,
+            "role": new_user.role,
+            "designation": new_user.designation,
+            "email": new_user.email,
+            "district": new_user.district,
+            "state": new_user.state,
+            "constituency": new_user.constituency
+        }
+    }
+

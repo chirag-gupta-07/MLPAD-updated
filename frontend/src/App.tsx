@@ -19,9 +19,11 @@ import { MpDashboard } from './components/MpDashboard';
 import { CitizenPortal } from './components/CitizenPortal';
 import { AuthPage } from './components/AuthPage';
 import { IntroSplash } from './components/IntroSplash';
+import { HomePage } from './components/homepage/HomePage';
 
 export const App: React.FC = () => {
   const [introCompleted, setIntroCompleted] = useState<boolean>(false);
+  const [showAuthGateway, setShowAuthGateway] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return Boolean(localStorage.getItem('mplads_token') && localStorage.getItem('mplads_user'));
   });
@@ -81,6 +83,7 @@ export const App: React.FC = () => {
     localStorage.removeItem('mplads_user');
     delete axios.defaults.headers.common['Authorization'];
     setIsAuthenticated(false);
+    setShowAuthGateway(false);
     setCurrentUser(null);
     setSelectedProject(null);
   };
@@ -110,13 +113,21 @@ export const App: React.FC = () => {
     return <IntroSplash onComplete={() => setIntroCompleted(true)} />;
   }
 
-  // 1. If not authenticated, show official Authorization Gateway Page
+  // 1. If not authenticated:
+  // If user clicked "Access Platform", show official Authorization Gateway
+  // Otherwise, display the redesigned premium public Homepage
   if (!isAuthenticated) {
-    return (
-      <ThemeProvider>
-        <AuthPage onAuthSuccess={handleAuthSuccess} />
-      </ThemeProvider>
-    );
+    if (showAuthGateway) {
+      return (
+        <ThemeProvider>
+          <AuthPage 
+            onAuthSuccess={handleAuthSuccess} 
+            onBackToHome={() => setShowAuthGateway(false)} 
+          />
+        </ThemeProvider>
+      );
+    }
+    return <HomePage onAccessPlatform={() => setShowAuthGateway(true)} />;
   }
 
   return (
