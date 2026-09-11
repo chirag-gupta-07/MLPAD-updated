@@ -302,7 +302,7 @@ export const App: React.FC = () => {
               <span>Smart India Hackathon 2026 · Problem Statement <strong>SIH26102</strong></span>
             </div>
             <span>Ministry of Statistics and Programme Implementation (MoSPI) · DIID</span>
-            <span className="font-semibold text-emerald-700 dark:text-emerald-500">AI Risk Intelligence & Decision Support Platform v1.0</span>
+            <span className="font-semibold text-emerald-700 dark:text-emerald-500">MLPAD · Multi-Level Project Anomaly Detection (MPLAD Scheme)</span>
           </div>
         </footer>
 

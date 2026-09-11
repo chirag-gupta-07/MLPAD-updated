@@ -257,14 +257,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({
         <div className="text-center mb-6">
           <img
             src="/logo.png"
-            alt="MPLAD Logo"
+            alt="MLPAD Logo"
             className="w-16 h-16 object-contain mx-auto mb-3 drop-shadow-xs"
           />
           <h1 className="text-xl font-black text-slate-950 tracking-tight">
-            MPLADS AI Portal Authorization
+            MLPAD Portal Authorization
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Ministry of Statistics & Programme Implementation · Govt. of India
+            Multi-Level Project Anomaly Detection · MPLAD Scheme
           </p>
         </div>
 

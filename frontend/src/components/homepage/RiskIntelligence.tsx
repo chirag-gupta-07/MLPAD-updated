@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { ArrowRight, AlertCircle, CheckCircle2, ShieldAlert } from 'lucide-react';
 
 interface RiskIntelligenceProps {
@@ -132,7 +132,7 @@ export const RiskIntelligence: React.FC<RiskIntelligenceProps> = ({ onExploreRis
             </p>
 
             <p className="mt-3 text-sm text-slate-500 leading-relaxed">
-              Rather than automating administrative sanctions or conclusions, MPLADS AI equips District Authorities and MoSPI officials with structured, empirical evidence to guide manual inspection and statutory due diligence.
+              Rather than automating administrative sanctions or conclusions, MLPAD equips District Authorities and MoSPI officials with structured, empirical evidence to guide manual inspection and statutory due diligence.
             </p>
 
             <button

@@ -269,14 +269,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="flex flex-col justify-center">
                   <div className="flex items-center space-x-2">
                     <span className="font-bold text-xs sm:text-sm tracking-tight text-[#0B1F3A] dark:text-white uppercase font-sans whitespace-nowrap">
-                      MPLADS Portal
+                      MLPAD Portal
                     </span>
                     <span className="hidden md:inline-block bg-[#1558A6]/10 dark:bg-blue-950/60 text-[#1558A6] dark:text-blue-400 text-[10px] font-semibold px-2 py-0.5 rounded border border-[#1558A6]/20 uppercase tracking-wider whitespace-nowrap">
                       {activeRole.replace('_', ' ')}
                     </span>
                   </div>
                   <p className="text-[10px] text-[#5F6F82] dark:text-slate-400 whitespace-nowrap hidden xl:block font-medium leading-none mt-0.5">
-                    MoSPI • Government of India
+                    Multi-Level Project Anomaly Detection · MPLAD Scheme
                   </p>
                 </div>
               </div>
@@ -394,7 +394,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <img src="/logo.png" alt="MLPAD Logo" className="w-10 h-10 object-contain drop-shadow-xs" />
                 <div>
                   <div className="text-sm font-black text-slate-950 dark:text-white tracking-tight">
-                    MPLADS Governance Modules
+                    MLPAD Governance Modules
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     Role View: <span className="font-bold text-indigo-600 dark:text-indigo-400">{activeRole.replace('_', ' ')}</span>

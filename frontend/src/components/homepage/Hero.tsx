@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { 
   ArrowRight, ShieldCheck, Activity, BrainCircuit, 
   Sparkles, CheckCircle2, TrendingUp, AlertTriangle, 
@@ -31,7 +31,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, onViewIntelligence }) => 
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white border border-slate-200 shadow-2xs mb-6">
               <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
               <span className="text-[11px] font-bold tracking-wider text-slate-800 uppercase">
-                MoSPI • MPLADS • AI GOVERNANCE
+                MoSPI • MLPAD • MULTI-LEVEL PROJECT ANOMALY DETECTION
               </span>
             </div>
 
@@ -45,7 +45,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, onViewIntelligence }) => 
 
             {/* Supporting Paragraph */}
             <p className="mt-5 text-base sm:text-lg text-slate-600 leading-relaxed max-w-2xl font-normal">
-              An intelligent decision-support and governance platform that helps identify financial anomalies, project delays, duplicate works, procurement risks and emerging patterns across MPLADS allocations.
+              An intelligent decision-support and governance platform that helps identify financial anomalies, project delays, duplicate works, procurement risks and emerging patterns across MPLAD Scheme allocations.
             </p>
 
             {/* CTA Buttons */}

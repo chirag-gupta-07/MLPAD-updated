@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 interface HomeFooterProps {
   onNavigateSection: (id: string) => void;
@@ -15,10 +15,10 @@ export const HomeFooter: React.FC<HomeFooterProps> = ({ onNavigateSection, onAcc
           {/* Left branding (2 cols) */}
           <div className="lg:col-span-2 flex flex-col items-start">
             <div className="flex items-center space-x-3 mb-4">
-              <img src="/logo.png" alt="MPLAD Logo" className="w-10 h-10 object-contain drop-shadow-xs" />
+              <img src="/logo.png" alt="MLPAD Logo" className="w-10 h-10 object-contain drop-shadow-xs" />
               <div>
-                <div className="text-white font-extrabold text-base tracking-tight">MPLADS AI</div>
-                <div className="text-xs text-slate-400 font-medium">Risk Intelligence & Governance Platform</div>
+                <div className="text-white font-extrabold text-base tracking-tight">MLPAD</div>
+                <div className="text-xs text-slate-400 font-medium">Multi-Level Project Anomaly Detection · MPLAD Scheme</div>
               </div>
             </div>
 
@@ -120,7 +120,7 @@ export const HomeFooter: React.FC<HomeFooterProps> = ({ onNavigateSection, onAcc
         {/* Bottom copyright line */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
           <span>
-            © 2026 MPLADS AI Risk Intelligence & Governance Platform
+            © 2026 MLPAD — Multi-Level Project Anomaly Detection Platform · MPLAD Scheme
           </span>
           <div className="flex items-center space-x-1">
             <span className="h-1 w-6 bg-amber-500 rounded-full" />

@@ -70,8 +70,8 @@ async def lifespan(app: FastAPI):
     # Shutdown logic if any
 
 app = FastAPI(
-    title="MPLADS AI Risk Intelligence Platform API",
-    description="MoSPI / DIID Smart India Hackathon 2026 (SIH26102) - Decision Support System for Detecting Anomalies and Inefficiencies in MPLADS Scheme Implementation.",
+    title="MLPAD - Multi-Level Project Anomaly Detection Platform API",
+    description="MoSPI / DIID Smart India Hackathon 2026 (SIH26102) - Decision Support System for Detecting Anomalies and Inefficiencies in the MPLAD Scheme.",
     version="1.0.0",
     lifespan=lifespan
 )

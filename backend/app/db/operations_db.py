@@ -1734,39 +1734,8 @@ def adopt_cluster_by_mp(
     new_work_id = f"MPLADS/REC/{clean_dist}/2026/{hex_code}"
     today_str = datetime.now().strftime("%Y-%m-%d")
 
-    # 2. Add to mplads_master.db (SQLAlchemy)
-    try:
-        from backend.app.db.database import SessionLocal
-        from backend.app.db.models import Work
-        db_session = SessionLocal()
-        try:
-            new_work = Work(
-                work_id=new_work_id,
-                work_description=f"[{notice_number}] {title}: Citizen Hotspot Demand Adoption (Para 4.1)",
-                state=state,
-                district=district,
-                constituency=constituency or f"{district} Lok Sabha",
-                mp_name=mp_name,
-                sector=cat or sector,
-                category=cat,
-                sanctioned_amount=float(estimated_cost or 1500000.0),
-                total_expenditure=0.0,
-                completion_percentage=0.0,
-                sanction_date=today_str,
-                status="RECOMMENDED",
-                composite_risk_score=10.0,
-                risk_level="LOW",
-                latitude=center_lat,
-                longitude=center_lon,
-                implementing_agency="Awaiting Tender Allocation (DRDA)"
-            )
-            db_session.add(new_work)
-            db_session.commit()
-            db_session.refresh(new_work)
-        finally:
-            db_session.close()
-    except Exception as e:
-        logger.warning(f"Could not persist Work in master DB during cluster adoption: {e}")
+    # 2. Note: Work is NOT added to mplads_master.db until administrative sanction is granted.
+    # It remains exclusively in project_approvals and citizen requests.
 
     # 3. Create Proposal in operations.db project_approvals
     memo_text = official_notice_memo or (

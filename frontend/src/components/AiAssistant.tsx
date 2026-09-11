@@ -6,7 +6,7 @@ export const AiAssistant: React.FC = () => {
   const [messages, setMessages] = useState<Array<{ sender: 'user' | 'assistant'; text: string; works?: any[] }>>([
     {
       sender: 'assistant',
-      text: 'Hello! I am your **MPLADS AI Risk & Decision Support Assistant**. I can help you analyze financial anomalies, search for duplicate infrastructure works, or investigate delayed projects across any Indian district or constituency.\n\nTry asking one of the sample prompts below or type your own question:'
+      text: 'Hello! I am your **MLPAD AI Assistant** (Multi-Level Project Anomaly Detection for the MPLAD Scheme). I can help you analyze financial anomalies, search for duplicate infrastructure works, or investigate delayed projects across any Indian district or constituency.\n\nTry asking one of the sample prompts below or type your own question:'
     }
   ]);
   const [input, setInput] = useState('');

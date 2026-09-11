@@ -28,23 +28,23 @@ export const HomeNavbar: React.FC<HomeNavbarProps> = ({ onAccessPlatform }) => {
             <a href="#" className="flex items-center space-x-3 group">
               <img
                 src="/logo.png"
-                alt="MPLAD Logo"
+                alt="MLPAD Logo"
                 className="w-12 h-12 object-contain drop-shadow-xs"
               />
               <div className="flex flex-col">
                 <div className="flex items-center space-x-2">
                   <span className="font-extrabold text-base sm:text-lg tracking-tight text-slate-950 font-sans">
-                    MPLADS AI
+                    MLPAD
                   </span>
                   <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/70 uppercase tracking-wider">
                     MoSPI
                   </span>
                 </div>
                 <span className="text-xs font-semibold text-slate-700 tracking-tight leading-none mt-0.5">
-                  Risk Intelligence & Governance Platform
+                  Multi-Level Project Anomaly Detection
                 </span>
                 <span className="text-[10px] text-slate-500 font-medium tracking-normal mt-0.5 hidden sm:block">
-                  Ministry of Statistics & Programme Implementation · Government of India
+                  MPLAD Scheme · Ministry of Statistics & Programme Implementation
                 </span>
               </div>
             </a>

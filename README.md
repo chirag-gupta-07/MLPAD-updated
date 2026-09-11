@@ -1,7 +1,7 @@
 <div align="center">
 
-# 🏛️ MPLADS AI Risk Intelligence Platform (MLPAD)
-### *AI-Powered Anomaly, Delay, and Inefficiency Detection for Scheme Monitoring*
+# 🏛️ MLPAD — Multi-Level Project Anomaly Detection Platform
+### *AI-Powered Anomaly, Delay, and Inefficiency Detection for the MPLAD Scheme*
 
 **Smart India Hackathon 2026 — Problem Statement ID:** `SIH26102`  
 **Ministry / Department:** Ministry of Statistics and Programme Implementation (MoSPI) / Data Informatics & Innovation Division (DIID)  

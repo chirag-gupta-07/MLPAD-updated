@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { 
   TrendingUp, 
   Camera, 
@@ -79,9 +79,9 @@ export const IntelligenceVisualization: React.FC = () => {
           {/* Center Hub Node */}
           <div className="flex justify-center mb-10 md:mb-16">
             <div className="relative z-10 w-32 h-32 rounded-3xl bg-slate-950 text-white shadow-xl flex flex-col items-center justify-center p-3 border-4 border-white">
-              <img src="/logo.png" alt="MPLAD" className="w-9 h-9 object-contain mb-1" />
-              <div className="text-xs font-black tracking-tight">MPLADS AI</div>
-              <div className="text-[9px] text-slate-400 font-medium">Core Engine</div>
+              <img src="/logo.png" alt="MLPAD" className="w-9 h-9 object-contain mb-1" />
+              <div className="text-xs font-black tracking-tight">MLPAD</div>
+              <div className="text-[9px] text-slate-400 font-medium">Multi-Level Engine</div>
               <span className="absolute -bottom-2 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[8px] font-bold uppercase tracking-wider shadow-xs">
                 Active
               </span>
