@@ -111,6 +111,39 @@ def save_evidence_photo(upload_file: UploadFile) -> Tuple[str, str]:
     return unique_filename, url_path
 
 
+def analyze_uploaded_photo(upload_file: UploadFile, work_id: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Analyzes an uploaded photo immediately upon file selection:
+    - Runs AI Computer Vision (Gemini 3.6 / CLIP)
+    - Automatically calculates physical stage and estimated progress percentage
+    - Generates a natural language visual ground summary
+    - Computes perceptual hash for duplication checks
+    """
+    from backend.app.services.image_classifier import classify_construction_stage
+    
+    unique_filename, url_path = save_evidence_photo(upload_file)
+    photo_path = UPLOADS_DIR / unique_filename
+    
+    classification = classify_construction_stage(str(photo_path))
+    photo_phash = compute_photo_phash(photo_path)
+    
+    reuse_info = None
+    if photo_phash and work_id:
+        reuse_info = check_photo_reuse(photo_phash, work_id)
+        
+    return {
+        "photo_filename": unique_filename,
+        "photo_url": url_path,
+        "classified_stage": classification.get("classified_stage", "UNVERIFIED"),
+        "confidence": classification.get("confidence", 0.0),
+        "estimated_progress": classification.get("estimated_progress", 0.0),
+        "summary": classification.get("summary", ""),
+        "method": classification.get("method", "none"),
+        "photo_phash": photo_phash,
+        "reuse_info": reuse_info
+    }
+
+
 def create_citizen_evidence_submission(
     work_id: str,
     issue_type: str,
@@ -154,6 +187,8 @@ def create_citizen_evidence_submission(
     reused_photo_flag = None
     reused_photo_matches = []
     classified_stage = "UNVERIFIED"
+    ai_estimated_progress = None
+    ai_summary = None
     image_progress_mismatch = None
     mismatch_severity = None
     
@@ -175,6 +210,13 @@ def create_citizen_evidence_submission(
                 from backend.app.services.image_classifier import classify_construction_stage
                 classification = classify_construction_stage(str(photo_path))
                 classified_stage = classification.get("classified_stage", "UNVERIFIED")
+                ai_estimated_progress = classification.get("estimated_progress")
+                ai_summary = classification.get("summary")
+                
+                # If user didn't specify claimed_progress or left it default, use AI estimated progress
+                if claimed_progress is None and ai_estimated_progress is not None:
+                    progress_val = float(ai_estimated_progress)
+                    gap = round(abs(official_progress - progress_val), 1)
             except Exception as e:
                 logger.warning(f"Image classification failed: {e}")
                 classified_stage = "UNVERIFIED"
@@ -221,6 +263,8 @@ def create_citizen_evidence_submission(
         "reused_photo_flag": reused_photo_flag,
         "reused_photo_matches": json.dumps(reused_photo_matches) if reused_photo_matches else None,
         "classified_stage": classified_stage,
+        "ai_estimated_progress": ai_estimated_progress,
+        "ai_summary": ai_summary,
         "image_progress_mismatch": image_progress_mismatch,
         "mismatch_severity": mismatch_severity
     }

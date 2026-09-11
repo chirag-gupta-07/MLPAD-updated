@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from backend.app.db.citizen_evidence_db import UPLOADS_DIR, delete_evidence
 from backend.app.services.citizen_evidence_service import (
     create_citizen_evidence_submission,
+    analyze_uploaded_photo,
     get_enriched_evidence_list,
     get_evidence_by_id,
     update_evidence_verification,
@@ -21,6 +22,27 @@ from backend.app.db.models import User
 from backend.app.api.auth import require_roles
 
 router = APIRouter(prefix="/api/citizen-evidence", tags=["Citizen Evidence"])
+
+
+@router.post("/analyze-photo", summary="Analyze evidence photo with AI Computer Vision & Progress Estimation")
+async def analyze_photo(
+    photo: UploadFile = File(..., description="Ground photograph to inspect"),
+    work_id: Optional[str] = Form(None, description="Optional associated Work ID")
+) -> Dict[str, Any]:
+    """
+    Instantly runs Gemini 3.6 Flash / CLIP Computer Vision on uploaded photo:
+    - Auto-classifies physical construction stage
+    - Estimates percentage progress automatically
+    - Generates factual natural language visual summary
+    """
+    try:
+        analysis = analyze_uploaded_photo(photo, work_id=work_id)
+        return {
+            "status": "success",
+            "analysis": analysis
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Image analysis failed: {str(e)}")
 
 
 class VerificationUpdateRequest(BaseModel):

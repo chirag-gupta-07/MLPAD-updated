@@ -60,14 +60,16 @@ def init_db():
                 reused_photo_flag TEXT,
                 reused_photo_matches TEXT,
                 image_progress_mismatch TEXT,
-                mismatch_severity TEXT
+                mismatch_severity TEXT,
+                ai_summary TEXT,
+                ai_estimated_progress REAL
             );
         """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_evidence_work_id ON citizen_evidence (work_id);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_evidence_status ON citizen_evidence (verification_status);")
         
         # Add columns if they do not exist (migration)
-        for col in ["photo_phash", "classified_stage", "reused_photo_flag", "reused_photo_matches", "image_progress_mismatch", "mismatch_severity"]:
+        for col in ["photo_phash", "classified_stage", "reused_photo_flag", "reused_photo_matches", "image_progress_mismatch", "mismatch_severity", "ai_summary", "ai_estimated_progress"]:
             try:
                 cursor.execute(f"ALTER TABLE citizen_evidence ADD COLUMN {col} TEXT")
             except sqlite3.OperationalError:
@@ -116,7 +118,9 @@ def insert_evidence(record: Dict[str, Any]) -> Dict[str, Any]:
         "reused_photo_flag": record.get("reused_photo_flag"),
         "reused_photo_matches": record.get("reused_photo_matches"),
         "image_progress_mismatch": record.get("image_progress_mismatch"),
-        "mismatch_severity": record.get("mismatch_severity")
+        "mismatch_severity": record.get("mismatch_severity"),
+        "ai_summary": record.get("ai_summary"),
+        "ai_estimated_progress": record.get("ai_estimated_progress")
     }
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -128,7 +132,7 @@ def insert_evidence(record: Dict[str, Any]) -> Dict[str, Any]:
                 official_progress, claimed_progress, progress_gap,
                 submission_timestamp, verification_status, admin_notes, verified_at, verified_by,
                 photo_phash, classified_stage, reused_photo_flag, reused_photo_matches,
-                image_progress_mismatch, mismatch_severity
+                image_progress_mismatch, mismatch_severity, ai_summary, ai_estimated_progress
             ) VALUES (
                 :id, :work_id, :citizen_name, :citizen_contact, :issue_type,
                 :description, :photo_filename, :photo_url, :latitude, :longitude,
@@ -136,7 +140,7 @@ def insert_evidence(record: Dict[str, Any]) -> Dict[str, Any]:
                 :official_progress, :claimed_progress, :progress_gap,
                 :submission_timestamp, :verification_status, :admin_notes, :verified_at, :verified_by,
                 :photo_phash, :classified_stage, :reused_photo_flag, :reused_photo_matches,
-                :image_progress_mismatch, :mismatch_severity
+                :image_progress_mismatch, :mismatch_severity, :ai_summary, :ai_estimated_progress
             )
         """, full_record)
         conn.commit()

@@ -13,7 +13,8 @@ import {
   Target,
   Sparkles,
   Building2,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
 
 interface CitizenEvidenceModalProps {
@@ -101,6 +102,16 @@ export const CitizenEvidenceModal: React.FC<CitizenEvidenceModalProps> = ({
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // AI Real-time Vision Analysis
+  const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<{
+    classified_stage: string;
+    confidence: number;
+    estimated_progress: number;
+    summary: string;
+    method: string;
+  } | null>(null);
 
   const [geoLocating, setGeoLocating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -244,11 +255,48 @@ export const CitizenEvidenceModal: React.FC<CitizenEvidenceModalProps> = ({
     }
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setPhotoFile(file);
       setPreviewUrl(URL.createObjectURL(file));
+
+      // Trigger automatic AI Vision analysis
+      setAnalyzingPhoto(true);
+      setAiAnalysis(null);
+      try {
+        const formData = new FormData();
+        formData.append('photo', file);
+        if (workId.trim()) formData.append('work_id', workId.trim());
+
+        const res = await axios.post('/api/citizen-evidence/analyze-photo', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        if (res.data?.analysis) {
+          const analysis = res.data.analysis;
+          setAiAnalysis(analysis);
+
+          // Auto-set the progress slider to AI estimated progress
+          if (typeof analysis.estimated_progress === 'number') {
+            setClaimedProgress(Math.round(analysis.estimated_progress));
+          }
+
+          // If empty site detected, select Work Not Started / Ghost Work
+          if (analysis.classified_stage === 'EMPTY_SITE') {
+            setIssueType('WORK_NOT_STARTED');
+          }
+
+          // If description is empty or short, auto-populate with AI summary
+          if (analysis.summary && description.trim().length < 10) {
+            setDescription(analysis.summary);
+          }
+        }
+      } catch (err) {
+        console.warn('AI photo analysis skipped:', err);
+      } finally {
+        setAnalyzingPhoto(false);
+      }
     }
   };
 
@@ -293,6 +341,13 @@ export const CitizenEvidenceModal: React.FC<CitizenEvidenceModalProps> = ({
       formData.append('latitude', latNum.toString());
       formData.append('longitude', lonNum.toString());
       formData.append('claimed_progress', claimedProgress.toString());
+
+      if (aiAnalysis?.summary) {
+        formData.append('ai_summary', aiAnalysis.summary);
+      }
+      if (aiAnalysis && typeof aiAnalysis.estimated_progress === 'number') {
+        formData.append('ai_estimated_progress', aiAnalysis.estimated_progress.toString());
+      }
 
       if (!isAnonymous && citizenName.trim()) {
         formData.append('citizen_name', citizenName.trim());
@@ -471,6 +526,57 @@ export const CitizenEvidenceModal: React.FC<CitizenEvidenceModalProps> = ({
                 </label>
               )}
             </div>
+
+            {/* AI Real-time Vision Summary & Stage Analysis */}
+            {analyzingPhoto && (
+              <div className="mt-2.5 p-3 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center space-x-2 text-indigo-800 text-xs animate-pulse">
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                <span className="font-medium">AI Computer Vision (Gemini 3.6 Flash) analyzing site image...</span>
+              </div>
+            )}
+
+            {aiAnalysis && !analyzingPhoto && (
+              <div className="mt-2.5 p-3.5 rounded-xl bg-gradient-to-br from-indigo-50/90 to-purple-50/60 border border-indigo-200 text-xs text-indigo-950 space-y-2.5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1.5 font-bold text-indigo-900">
+                    <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span>AI Computer Vision Ground Analysis</span>
+                  </div>
+                  <span className="text-[10px] bg-indigo-600 text-white font-mono font-semibold px-2.5 py-0.5 rounded-full shadow-xs">
+                    {aiAnalysis.classified_stage.replace(/_/g, ' ')}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="bg-white/90 p-2 rounded-lg border border-indigo-100 shadow-xs">
+                    <span className="text-[10px] text-slate-500 block uppercase font-medium">AI Estimated Progress</span>
+                    <strong className="text-indigo-700 font-mono text-sm font-bold">{aiAnalysis.estimated_progress}%</strong>
+                  </div>
+                  <div className="bg-white/90 p-2 rounded-lg border border-indigo-100 shadow-xs">
+                    <span className="text-[10px] text-slate-500 block uppercase font-medium">Model Confidence</span>
+                    <strong className="text-emerald-700 font-mono text-sm font-bold">{aiAnalysis.confidence}%</strong>
+                  </div>
+                </div>
+
+                {aiAnalysis.summary && (
+                  <div className="bg-white/95 p-3 rounded-lg border border-indigo-100 text-[11px] space-y-1.5 shadow-xs">
+                    <span className="text-[10px] text-indigo-700 font-bold uppercase tracking-wider block">
+                      AI Visual Ground Summary
+                    </span>
+                    <p className="text-slate-700 leading-relaxed italic">
+                      "{aiAnalysis.summary}"
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setDescription(aiAnalysis.summary)}
+                      className="mt-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition underline"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Use this AI summary as observation report
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* GPS Coordinates & Geolocation Capture */}
@@ -586,9 +692,14 @@ export const CitizenEvidenceModal: React.FC<CitizenEvidenceModalProps> = ({
           {/* Claimed Physical Completion Percentage */}
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="font-bold text-slate-800">
-                Observed Physical Progress on Site:{' '}
+              <label className="font-bold text-slate-800 flex items-center flex-wrap gap-1.5">
+                <span>Observed Physical Progress on Site:</span>
                 <span className="text-indigo-600 font-mono font-bold">{claimedProgress}%</span>
+                {aiAnalysis && (
+                  <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full border border-emerald-300">
+                    <Sparkles className="w-3 h-3 text-emerald-600" /> Auto-Detected by AI
+                  </span>
+                )}
               </label>
               {(workSiteInfo?.completion_percentage !== undefined ||
                 prefilledWork?.completion_percentage !== undefined) && (

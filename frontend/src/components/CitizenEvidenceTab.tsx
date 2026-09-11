@@ -17,7 +17,8 @@ import {
   Check,
   XCircle,
   Layers,
-  Trash2
+  Trash2,
+  Sparkles
 } from 'lucide-react';
 import { CitizenEvidenceModal } from './CitizenEvidenceModal';
 
@@ -352,6 +353,14 @@ export const CitizenEvidenceTab: React.FC = () => {
                   {getProximityBadge(item.proximity_flag, item.distance_from_site_km)}
                 </div>
 
+                {/* AI Stage Overlay Pill */}
+                {item.classified_stage && item.classified_stage !== 'UNVERIFIED' && (
+                  <div className="absolute top-2 right-2 bg-indigo-950/85 backdrop-blur-sm text-indigo-200 border border-indigo-500/40 text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold flex items-center gap-1 shadow-sm">
+                    <Sparkles className="w-3 h-3 text-indigo-400" />
+                    <span>AI: {item.classified_stage.replace(/_/g, ' ')}</span>
+                  </div>
+                )}
+
                 {/* Discrepancy Pill */}
                 {item.progress_gap > 0 && (
                   <div className="absolute bottom-2 right-2 bg-slate-900/80 backdrop-blur-sm text-white text-[10px] px-2 py-0.5 rounded font-mono font-semibold">
@@ -365,13 +374,61 @@ export const CitizenEvidenceTab: React.FC = () => {
                 
                 {/* Issue Type & Narrative */}
                 <div>
-                  <span className="inline-block bg-slate-100 text-slate-700 font-semibold text-[10px] px-2 py-0.5 rounded mb-1.5">
-                    {item.issue_type.replace(/_/g, ' ')}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                    <span className="inline-block bg-slate-100 text-slate-700 font-semibold text-[10px] px-2 py-0.5 rounded">
+                      {item.issue_type.replace(/_/g, ' ')}
+                    </span>
+                    {item.classified_stage && item.classified_stage !== 'UNVERIFIED' && (
+                      <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold text-[10px] px-2 py-0.5 rounded">
+                        <Sparkles className="w-3 h-3 text-indigo-600" />
+                        AI Detected: {item.classified_stage.replace(/_/g, ' ')}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-slate-700 line-clamp-3 leading-relaxed">
                     {item.description}
                   </p>
                 </div>
+
+                {/* AI Verification Alerts */}
+                {(item.image_progress_mismatch || item.reused_photo_flag) && (
+                  <div className="space-y-1.5">
+                    {item.image_progress_mismatch && (
+                      <div className={`p-2 rounded-lg text-[11px] font-medium flex items-center justify-between border ${
+                        item.mismatch_severity === 'HIGH'
+                          ? 'bg-rose-50 text-rose-800 border-rose-200'
+                          : 'bg-amber-50 text-amber-800 border-amber-200'
+                      }`}>
+                        <div className="flex items-center space-x-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+                          <span><strong>AI Cross-Check:</strong> Physical Mismatch ({item.mismatch_severity || 'HIGH'} Severity)</span>
+                        </div>
+                        <span className="text-[10px] bg-rose-200/80 text-rose-900 px-1.5 py-0.5 rounded font-mono font-bold">
+                          Ghost Work Flag
+                        </span>
+                      </div>
+                    )}
+                    {item.reused_photo_flag && (
+                      <div className="p-2 rounded-lg text-[11px] font-medium flex items-center space-x-1.5 bg-orange-50 text-orange-800 border border-orange-200">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-orange-600" />
+                        <span><strong>Anti-Fraud:</strong> Duplicate photo reuse detected across submissions!</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* AI Visual Ground Summary if present and distinct */}
+                {item.ai_summary && item.ai_summary !== item.description && (
+                  <div className="p-2.5 rounded-lg bg-indigo-50/70 border border-indigo-100 text-[11px] text-indigo-950 space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-indigo-800 text-[10px] uppercase tracking-wider">
+                      <Sparkles className="w-3 h-3 text-indigo-600" />
+                      <span>AI Visual Ground Summary</span>
+                    </div>
+                    <p className="italic text-slate-700 leading-relaxed">
+                      "{item.ai_summary}"
+                    </p>
+                  </div>
+                )}
 
                 {/* Administrative Notes if any */}
                 {item.admin_notes && (
@@ -439,6 +496,40 @@ export const CitizenEvidenceTab: React.FC = () => {
               <button onClick={() => setReviewingItem(null)} className="text-slate-400 hover:text-slate-600">
                 <XCircle className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* AI Intelligence Brief */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-[11px]">
+              <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                <span>AI Verification Intelligence</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600">
+                <div className="bg-white p-2 rounded border border-slate-100">
+                  <span className="text-[10px] text-slate-400 block uppercase font-medium">CV Stage</span>
+                  <strong className="text-indigo-700 font-mono">{reviewingItem.classified_stage ? reviewingItem.classified_stage.replace(/_/g, ' ') : 'UNVERIFIED'}</strong>
+                </div>
+                <div className="bg-white p-2 rounded border border-slate-100">
+                  <span className="text-[10px] text-slate-400 block uppercase font-medium">Cross-Check Alert</span>
+                  <strong className={reviewingItem.image_progress_mismatch ? 'text-rose-600 font-mono' : 'text-emerald-600 font-mono'}>
+                    {reviewingItem.image_progress_mismatch ? `${reviewingItem.mismatch_severity || 'HIGH'} MISMATCH` : 'Consistent'}
+                  </strong>
+                </div>
+                <div className="bg-white p-2 rounded border border-slate-100">
+                  <span className="text-[10px] text-slate-400 block uppercase font-medium">GPS Centroid Distance</span>
+                  <strong className="text-slate-800">{reviewingItem.distance_from_site_km !== null && reviewingItem.distance_from_site_km !== undefined ? `${reviewingItem.distance_from_site_km.toFixed(2)} km` : '0.00 km'}</strong>
+                </div>
+                <div className="bg-white p-2 rounded border border-slate-100">
+                  <span className="text-[10px] text-slate-400 block uppercase font-medium">Photo Fingerprint</span>
+                  <strong className="font-mono text-slate-800">{reviewingItem.photo_phash ? reviewingItem.photo_phash.slice(0, 10) + '...' : 'Recorded'}</strong>
+                </div>
+              </div>
+              {reviewingItem.ai_summary && (
+                <div className="bg-white p-2.5 rounded border border-slate-100 text-[11px] space-y-1">
+                  <span className="text-[10px] text-indigo-700 font-bold uppercase tracking-wider block">AI Visual Ground Description</span>
+                  <p className="italic text-slate-700 leading-relaxed">"{reviewingItem.ai_summary}"</p>
+                </div>
+              )}
             </div>
 
             <form onSubmit={handleUpdateStatus} className="space-y-3 text-xs">
